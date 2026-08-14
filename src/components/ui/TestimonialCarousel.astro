@@ -1,0 +1,92 @@
+---
+import type { Testimonial } from '../../lib/db';
+
+interface Props {
+  testimonials: Testimonial[];
+}
+
+const { testimonials } = Astro.props;
+---
+
+<div class="relative group testimonial-carousel-wrapper">
+  <!-- Desktop Navigation -->
+  <button class="carousel-prev absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-6 w-12 h-12 bg-white rounded-full border-2 border-babypink shadow-[0_4px_0_var(--color-candy)] z-10 flex items-center justify-center text-roseaccent hover:translate-y-[-calc(50%+2px)] hover:shadow-[0_6px_0_var(--color-babypink)] transition-all hidden md:flex text-xl font-bold cursor-pointer">
+    ←
+  </button>
+  
+  <!-- Scroll Container -->
+  <div class="carousel-scroll flex gap-6 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4 px-4 -mx-4">
+    {testimonials.map((t) => (
+      <div class="snap-center shrink-0 w-[90vw] md:w-[700px] cute-card p-6 md:p-8 bg-white flex flex-col md:flex-row gap-6 md:gap-8 items-center border-2 border-babypink">
+        <!-- Review (Left on desktop, top on mobile) -->
+        <div class="flex-1 text-center md:text-left order-2 md:order-1">
+          <div class="text-4xl text-candy mb-2">"</div>
+          <p class="text-darkpink md:text-lg font-medium italic leading-relaxed">
+            {t.feedback}
+          </p>
+        </div>
+        
+        <!-- Client Info (Right on desktop, bottom on mobile) -->
+        <div class="flex flex-col items-center gap-3 md:border-l md:border-candy md:pl-8 order-1 md:order-2 shrink-0 min-w-[150px]">
+          <div class="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-babypink overflow-hidden bg-candy/30 flex items-center justify-center text-3xl font-bold shadow-md">
+            {t.avatar_url ? (
+              <img src={t.avatar_url} alt={t.client_name} class="w-full h-full object-cover" loading="lazy" />
+            ) : (
+              <span>🌸</span>
+            )}
+          </div>
+          <div class="text-center">
+            <h4 class="font-display font-bold text-darkpink-deep text-lg">{t.client_name}</h4>
+            {t.commission_type_title && (
+              <span class="inline-block mt-1 text-xs font-bold text-roseaccent bg-rose-50 px-3 py-1 rounded-full border border-rose-100 shadow-sm">
+                {t.commission_type_title}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <button class="carousel-next absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-6 w-12 h-12 bg-white rounded-full border-2 border-babypink shadow-[0_4px_0_var(--color-candy)] z-10 flex items-center justify-center text-roseaccent hover:translate-y-[-calc(50%+2px)] hover:shadow-[0_6px_0_var(--color-babypink)] transition-all hidden md:flex text-xl font-bold cursor-pointer">
+    →
+  </button>
+</div>
+
+<style>
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>
+
+<script>
+  function setupTestimonialCarousels() {
+    const wrappers = document.querySelectorAll('.testimonial-carousel-wrapper');
+    
+    wrappers.forEach(wrapper => {
+      const scroll = wrapper.querySelector('.carousel-scroll') as HTMLElement;
+      const prev = wrapper.querySelector('.carousel-prev') as HTMLButtonElement;
+      const next = wrapper.querySelector('.carousel-next') as HTMLButtonElement;
+      
+      if (!scroll || !prev || !next) return;
+
+      const scrollAmount = 700; // rough width of a card on desktop
+
+      prev.addEventListener('click', () => {
+        scroll.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      });
+
+      next.addEventListener('click', () => {
+        scroll.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      });
+    });
+  }
+
+  // Setup on initial load and view transitions
+  setupTestimonialCarousels();
+  document.addEventListener('astro:page-load', setupTestimonialCarousels);
+</script>

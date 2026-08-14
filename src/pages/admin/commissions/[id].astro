@@ -1,0 +1,248 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getSupabaseAdmin } from '../../../lib/supabase';
+
+const sessionCookie = Astro.cookies.get('sb-session');
+if (!sessionCookie?.value) {
+  return Astro.redirect('/admin/login');
+}
+
+const { id } = Astro.params;
+let request: any = null;
+let fetchError = '';
+let updateSuccess = false;
+let updateError = '';
+
+const admin = getSupabaseAdmin();
+
+// Handle POST: status update + internal notes
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const newStatus = formData.get('status') as string;
+    const internalNotes = formData.get('internal_notes') as string;
+
+    const { error } = await admin
+      .from('commission_requests')
+      .update({
+        status: newStatus,
+        internal_notes: internalNotes,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+    updateSuccess = true;
+  } catch (e: any) {
+    updateError = e.message || 'Update failed.';
+  }
+}
+
+// Fetch request details
+try {
+  const { data, error } = await admin
+    .from('commission_requests')
+    .select(`
+      *,
+      commission_types(title, turnaround_time),
+      countries(name)
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+  request = data;
+} catch (e: any) {
+  fetchError = e.message || 'Commission request not found.';
+}
+
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', {
+  weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+});
+
+const statusColors: Record<string, string> = {
+  new: 'bg-blue-100 text-blue-700',
+  reviewing: 'bg-yellow-100 text-yellow-700',
+  accepted: 'bg-green-100 text-green-700',
+  in_progress: 'bg-purple-100 text-purple-700',
+  completed: 'bg-gray-100 text-gray-600',
+  rejected: 'bg-red-100 text-red-700',
+  cancelled: 'bg-stone-100 text-stone-600'
+};
+
+const allStatuses = ['new', 'reviewing', 'accepted', 'in_progress', 'completed', 'rejected', 'cancelled'];
+---
+
+<AdminLayout title={`Commission #${id?.slice(0,8)} | Admin`}>
+  <div class="p-6 md:p-8 flex flex-col gap-6 max-w-5xl">
+    
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-sm text-gray-500">
+      <a href="/admin/commissions" class="hover:text-pink-600 font-semibold">Commission Requests</a>
+      <span>/</span>
+      <span class="text-gray-800 font-bold">#{id?.slice(0, 8).toUpperCase()}</span>
+    </div>
+
+    {fetchError && (
+      <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 font-semibold">
+        ⚠️ {fetchError}
+      </div>
+    )}
+
+    {updateSuccess && (
+      <div class="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 font-semibold">
+        ✅ Request updated successfully.
+      </div>
+    )}
+    
+    {updateError && (
+      <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 font-semibold">
+        ⚠️ {updateError}
+      </div>
+    )}
+
+    {request && (
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left: Request Info -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+          <!-- Client Info Card -->
+          <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
+            <div class="flex items-start justify-between">
+              <h2 class="text-lg font-bold text-gray-800">Client Information</h2>
+              <span class={`px-2 py-0.5 rounded-full text-xs font-bold capitalize ${statusColors[request.status] || 'bg-gray-100 text-gray-600'}`}>
+                {request.status.replace('_', ' ')}
+              </span>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Name</div>
+                <div class="font-bold text-gray-800">{request.client_name}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Email</div>
+                <a href={`mailto:${request.client_email}`} class="font-semibold text-pink-600 hover:underline">{request.client_email}</a>
+              </div>
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Phone</div>
+                <div class="font-semibold text-gray-800">{request.client_phone}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Preferred Contact</div>
+                <div class="font-semibold text-gray-800 capitalize">{request.preferred_contact_method}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Country</div>
+                <div class="font-semibold text-gray-800">{request.countries?.name || request.client_country_code}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Submitted</div>
+                <div class="font-semibold text-gray-800">{formatDate(request.created_at)}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Commission Details Card -->
+          <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
+            <h2 class="text-lg font-bold text-gray-800">Commission Details</h2>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Style</div>
+                <div class="font-bold text-gray-800">{request.commission_types?.title || 'Unknown'}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Characters</div>
+                <div class="font-bold text-gray-800">{request.character_count}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Commercial Use</div>
+                <div class={`font-bold ${request.is_commercial ? 'text-orange-600' : 'text-gray-800'}`}>
+                  {request.is_commercial ? '✓ Yes (Commercial)' : 'No (Personal)'}
+                </div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Desired Deadline</div>
+                <div class="font-semibold text-gray-800">{request.desired_deadline || 'Not specified'}</div>
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Character Description</div>
+              <div class="font-medium text-gray-700 bg-gray-50 rounded-xl p-3 text-sm whitespace-pre-line">{request.description}</div>
+            </div>
+            {request.additional_notes && (
+              <div>
+                <div class="text-xs text-gray-400 font-semibold uppercase mb-1">Additional Notes</div>
+                <div class="font-medium text-gray-700 bg-gray-50 rounded-xl p-3 text-sm whitespace-pre-line">{request.additional_notes}</div>
+              </div>
+            )}
+          </div>
+
+          <!-- Reference Images -->
+          {request.reference_images && request.reference_images.length > 0 && (
+            <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
+              <h2 class="text-lg font-bold text-gray-800">Reference Images ({request.reference_images.length})</h2>
+              <div class="flex flex-wrap gap-3">
+                {request.reference_images.map((url: string) => (
+                  <a href={url} target="_blank" rel="noopener noreferrer" class="w-24 h-24 border-2 border-gray-200 rounded-xl overflow-hidden hover:border-pink-300 transition-colors">
+                    <img src={url} alt="Reference" class="w-full h-full object-cover" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <!-- Right: Pricing + Status Management -->
+        <div class="lg:col-span-4 flex flex-col gap-4">
+          <!-- Quoted Price Card -->
+          <div class="bg-pink-50 border-2 border-pink-200 rounded-2xl p-5 flex flex-col gap-2">
+            <div class="text-xs text-pink-500 font-bold uppercase tracking-wider">Quoted Price (Locked)</div>
+            <div class="text-3xl font-bold text-pink-700">
+              {request.currency === 'IDR' ? `Rp${Number(request.quoted_price).toLocaleString()}` : `$${request.quoted_price} ${request.currency}`}
+            </div>
+            <div class="text-xs text-pink-400 font-semibold mt-1">
+              Exchange rate: {request.exchange_rate_used ? Number(request.exchange_rate_used).toFixed(2) : 'N/A'}<br />
+              Pricing version: {request.pricing_version || '1.0'}
+            </div>
+          </div>
+
+          <!-- Status Update Form -->
+          <div class="bg-white border border-gray-200 rounded-2xl p-5 flex flex-col gap-4">
+            <h3 class="font-bold text-gray-800">Update Status</h3>
+            <form method="POST" class="flex flex-col gap-4">
+              <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-gray-500 uppercase">Status</label>
+                <select name="status" class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400">
+                  {allStatuses.map(s => (
+                    <option value={s} selected={request.status === s} class="capitalize">{s.replace('_', ' ')}</option>
+                  ))}
+                </select>
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-gray-500 uppercase">Internal Notes</label>
+                <textarea
+                  name="internal_notes"
+                  rows="4"
+                  placeholder="Private notes about this request..."
+                  class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 resize-none outline-none focus:border-pink-400"
+                >{request.internal_notes || ''}</textarea>
+              </div>
+              <button type="submit" class="bg-pink-600 hover:bg-pink-700 text-white font-bold text-sm rounded-xl px-4 py-2.5 transition-colors cursor-pointer">
+                Save Changes
+              </button>
+            </form>
+          </div>
+
+          <!-- Contact Client Actions -->
+          <div class="bg-white border border-gray-200 rounded-2xl p-5 flex flex-col gap-3">
+            <h3 class="font-bold text-gray-800">Contact Client</h3>
+            <a href={`mailto:${request.client_email}?subject=Your Commission Request - ${request.commission_types?.title || 'Artwork'}`}
+               class="flex items-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-700 transition-colors">
+              <span>📧</span> Send Email
+            </a>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+</AdminLayout>

@@ -1,0 +1,148 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+}
+
+const { title = 'Admin Dashboard | Riryn4rt' } = Astro.props;
+
+// Check auth via cookie
+const sessionCookie = Astro.cookies.get('sb-session');
+const isOnLoginPage = Astro.url.pathname === '/admin/login';
+
+// Redirect to login if no session (except on login page itself)
+if (!sessionCookie?.value && !isOnLoginPage) {
+  return Astro.redirect('/admin/login');
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <meta name="robots" content="noindex, nofollow" />
+  </head>
+  <body class="bg-blush text-darkpink min-h-screen flex font-sans">
+    <!-- Sidebar -->
+    <aside class="w-60 lg:w-64 xl:w-72 glass-surface border-r-2 border-babypink min-h-screen flex flex-col py-6 px-4 hidden md:flex sticky top-0 h-screen overflow-y-auto z-20">
+      <div class="mb-8 px-2">
+        <a href="/admin" class="text-xl font-bold font-display text-darkpink-deep flex items-center gap-2 hover:scale-105 transition-transform w-max">
+          🍓 Riryn4rt Studio
+        </a>
+        <p class="text-xs text-darkpink-muted mt-1 font-semibold ml-8">Admin Dashboard</p>
+      </div>
+
+      <nav class="flex flex-col gap-1.5 flex-grow font-semibold">
+        <a href="/admin" class="admin-nav-link">
+          <span>📊</span> Overview
+        </a>
+        <a href="/admin/portfolio" class="admin-nav-link">
+          <span>🖼️</span> Artworks
+        </a>
+        <a href="/admin/commissions" class="admin-nav-link">
+          <span>💌</span> Commission Requests
+        </a>
+        <a href="/admin/pricing" class="admin-nav-link">
+          <span>💰</span> Pricing & Regions
+        </a>
+        <a href="/admin/profile" class="admin-nav-link">
+          <span>👤</span> Artist Profile
+        </a>
+        <a href="/admin/settings" class="admin-nav-link">
+          <span>⚙️</span> Settings
+        </a>
+
+        <div class="border-t-2 border-candy mt-4 pt-4 flex flex-col gap-1.5">
+          <a href="/" target="_blank" class="admin-nav-link">
+            <span>🌐</span> View Public Site
+          </a>
+          <a href="/admin/logout" class="admin-nav-link !text-red-500 hover:!bg-red-50">
+            <span>🚪</span> Logout
+          </a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Mobile Header -->
+    <div class="md:hidden fixed top-0 left-0 right-0 glass-surface border-b-2 border-babypink px-4 py-3 flex items-center justify-between z-40">
+      <span class="font-bold font-display text-darkpink-deep">🍓 Riryn4rt Studio</span>
+      <button id="mobile-admin-menu-btn" class="p-2 text-darkpink focus:outline-none hover:bg-candy/30 rounded-lg transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Mobile Menu Dropdown -->
+    <div id="mobile-admin-menu" class="hidden md:hidden fixed top-[52px] left-0 right-0 bg-white border-b-2 border-babypink p-4 flex flex-col gap-1.5 z-30 shadow-lg font-semibold">
+      <a href="/admin" class="admin-nav-link">📊 Overview</a>
+      <a href="/admin/portfolio" class="admin-nav-link">🖼️ Artworks</a>
+      <a href="/admin/commissions" class="admin-nav-link">💌 Commission Requests</a>
+      <a href="/admin/pricing" class="admin-nav-link">💰 Pricing & Regions</a>
+      <a href="/admin/profile" class="admin-nav-link">👤 Artist Profile</a>
+      <a href="/admin/settings" class="admin-nav-link">⚙️ Settings</a>
+      <div class="border-t border-candy my-1"></div>
+      <a href="/" target="_blank" class="admin-nav-link">🌐 View Public Site</a>
+      <a href="/admin/logout" class="admin-nav-link !text-red-500">🚪 Logout</a>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 pt-4 md:pt-0 mt-12 md:mt-0 overflow-y-auto relative z-10">
+      <!-- Background elements -->
+      <div class="fixed top-0 right-0 w-[500px] h-[500px] bg-babypink/30 rounded-full blur-3xl -z-10 pointer-events-none translate-x-1/2 -translate-y-1/2"></div>
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style>
+  .admin-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    color: var(--color-darkpink-muted);
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .admin-nav-link:hover {
+    background-color: var(--color-candy);
+    color: var(--color-darkpink-deep);
+  }
+
+  .admin-nav-link.active {
+    background-color: var(--color-roseaccent);
+    color: white;
+    box-shadow: 0 2px 8px rgba(220, 80, 110, 0.3);
+  }
+</style>
+
+<script>
+  const btn = document.getElementById('mobile-admin-menu-btn');
+  const menu = document.getElementById('mobile-admin-menu');
+  if (btn && menu) {
+    btn.addEventListener('click', () => menu.classList.toggle('hidden'));
+  }
+
+  // Mark current active nav link
+  const links = document.querySelectorAll('.admin-nav-link');
+  links.forEach(link => {
+    // Exact match or sub-path match (but not for root /admin unless it's exactly /admin)
+    const url = new URL((link as HTMLAnchorElement).href);
+    const isRoot = url.pathname === '/admin' || url.pathname === '/admin/';
+    if (isRoot) {
+      if (window.location.pathname === '/admin' || window.location.pathname === '/admin/') {
+        link.classList.add('active');
+      }
+    } else if (window.location.href.startsWith(url.href)) {
+      link.classList.add('active');
+    }
+  });
+</script>

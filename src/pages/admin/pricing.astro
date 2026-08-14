@@ -1,0 +1,253 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getSupabaseAdmin } from '../../lib/supabase';
+
+const sessionCookie = Astro.cookies.get('sb-session');
+if (!sessionCookie?.value) {
+  return Astro.redirect('/admin/login');
+}
+
+const admin = getSupabaseAdmin();
+let commissionTypes: any[] = [];
+let addOns: any[] = [];
+let regions: any[] = [];
+let successMsg = '';
+let errorMsg = '';
+
+// Handle POST actions
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const action = formData.get('action') as string;
+
+    if (action === 'update_type') {
+      const typeId = formData.get('type_id') as string;
+      const basePrice = parseFloat(formData.get('base_price_idr') as string);
+      const isAvailable = formData.get('is_available') === 'true';
+      const { error } = await admin.from('commission_types').update({
+        base_price_idr: basePrice,
+        is_available: isAvailable,
+        updated_at: new Date().toISOString()
+      }).eq('id', typeId);
+      if (error) throw error;
+      successMsg = 'Commission type updated!';
+    }
+
+    if (action === 'update_addon') {
+      const addonId = formData.get('addon_id') as string;
+      const priceIdr = parseFloat(formData.get('price_idr') as string);
+      const { error } = await admin.from('commission_add_ons').update({
+        price_idr: priceIdr,
+        updated_at: new Date().toISOString()
+      }).eq('id', addonId);
+      if (error) throw error;
+      successMsg = 'Add-on price updated!';
+    }
+
+    if (action === 'update_region') {
+      const regionId = formData.get('region_id') as string;
+      const exchangeRate = parseFloat(formData.get('exchange_rate') as string);
+      const regionalMultiplier = parseFloat(formData.get('regional_multiplier') as string);
+      const { error } = await admin.from('pricing_regions').update({
+        exchange_rate: exchangeRate,
+        regional_multiplier: regionalMultiplier,
+        updated_at: new Date().toISOString()
+      }).eq('id', regionId);
+      if (error) throw error;
+      successMsg = 'Pricing region updated!';
+    }
+  } catch (e: any) {
+    errorMsg = e.message || 'Update failed.';
+  }
+}
+
+// Fetch data
+try {
+  const [typesRes, addOnsRes, regionsRes] = await Promise.all([
+    admin.from('commission_types').select('*').order('sort_order', { ascending: true }),
+    admin.from('commission_add_ons').select('*').order('sort_order', { ascending: true }),
+    admin.from('pricing_regions').select('*').order('currency_code', { ascending: true })
+  ]);
+  commissionTypes = typesRes.data || [];
+  addOns = addOnsRes.data || [];
+  regions = regionsRes.data || [];
+} catch (e: any) {
+  errorMsg = e.message || 'Failed to load pricing data.';
+}
+
+const formatIDR = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
+---
+
+<AdminLayout title="Pricing & Regions | Admin">
+  <div class="p-6 md:p-8 flex flex-col gap-8 max-w-5xl">
+    <div>
+      <h1 class="text-3xl font-display font-bold text-gray-800 tracking-tight">Pricing & Regions</h1>
+      <p class="text-gray-500 text-sm mt-1">
+        All prices stored in IDR (Indonesian Rupiah). Regional multipliers and exchange rates determine international pricing.
+      </p>
+    </div>
+
+    {successMsg && (
+      <div class="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 font-semibold text-sm shadow-sm">✅ {successMsg}</div>
+    )}
+    {errorMsg && (
+      <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 font-semibold text-sm shadow-sm">⚠️ {errorMsg}</div>
+    )}
+
+    <!-- Commission Types -->
+    <section>
+      <h2 class="text-sm font-display font-bold text-gray-500 uppercase tracking-wider mb-4">Commission Types</h2>
+      <div class="flex flex-col gap-4">
+        {commissionTypes.length === 0 ? (
+          <div class="bg-white/80 backdrop-blur-md border border-white/60 rounded-3xl p-10 text-center text-gray-400 font-bold font-display text-lg shadow-soft">
+            No commission types found. Seed your database first.
+          </div>
+        ) : (
+          commissionTypes.map(ct => (
+            <div class="bg-white/80 backdrop-blur-md border border-white/60 shadow-soft rounded-3xl p-6 group hover:border-roseaccent/30 transition-all">
+              <div class="flex flex-col sm:flex-row sm:items-start gap-6">
+                <div class="flex-grow">
+                  <h3 class="font-display font-bold text-xl text-gray-800">{ct.title}</h3>
+                  <p class="text-sm text-gray-500 mt-1">{ct.description?.slice(0, 100)}...</p>
+                  <div class="flex gap-4 mt-3 text-xs font-bold uppercase tracking-wider">
+                    <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg">⏱ {ct.turnaround_time}</span>
+                    <span class={`px-3 py-1 rounded-lg ${ct.is_available ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                      {ct.is_available ? '✓ Available' : '✗ Unavailable'}
+                    </span>
+                  </div>
+                </div>
+                <form method="POST" class="flex flex-col gap-3 min-w-[240px] bg-white/50 p-4 rounded-2xl border border-gray-100">
+                  <input type="hidden" name="action" value="update_type" />
+                  <input type="hidden" name="type_id" value={ct.id} />
+                  <div class="flex flex-col gap-1.5">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Base Price (IDR)</label>
+                    <input
+                      type="number"
+                      name="base_price_idr"
+                      value={ct.base_price_idr}
+                      class="border border-gray-200 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 outline-none focus:border-roseaccent focus:ring-2 focus:ring-roseaccent/20 w-full transition-all"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Available</label>
+                    <select name="is_available" class="border border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-2 focus:ring-roseaccent/20 w-full transition-all">
+                      <option value="true" selected={ct.is_available}>Yes</option>
+                      <option value="false" selected={!ct.is_available}>No</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="bg-darkpink hover:bg-roseaccent text-white font-bold text-xs rounded-xl px-4 py-2 mt-1 transition-all shadow-sm w-full">
+                    Save Changes
+                  </button>
+                </form>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+
+    <!-- Add-Ons -->
+    <section>
+      <h2 class="text-sm font-display font-bold text-gray-500 uppercase tracking-wider mb-4">Add-Ons</h2>
+      <div class="bg-white/80 backdrop-blur-md shadow-soft border border-white/60 rounded-3xl overflow-hidden">
+        {addOns.length === 0 ? (
+          <div class="p-10 text-center text-gray-400 font-bold font-display text-lg">No add-ons found.</div>
+        ) : (
+          <table class="w-full text-sm">
+            <thead class="bg-blush/30 border-b border-roseaccent/20">
+              <tr>
+                <th class="px-5 py-4 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Add-On</th>
+                <th class="px-5 py-4 text-right text-[11px] font-bold text-gray-500 uppercase tracking-wider">Current Price (IDR)</th>
+                <th class="px-5 py-4"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100/50">
+              {addOns.map(ao => (
+                <tr class="hover:bg-blush/20 transition-colors group">
+                  <td class="px-5 py-4">
+                    <div class="font-bold text-gray-800 text-base">{ao.label}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">{ao.description}</div>
+                  </td>
+                  <td class="px-5 py-4 text-right font-display font-bold text-gray-800 text-base">{formatIDR(ao.price_idr)}</td>
+                  <td class="px-5 py-4">
+                    <form method="POST" class="flex items-center gap-3 justify-end">
+                      <input type="hidden" name="action" value="update_addon" />
+                      <input type="hidden" name="addon_id" value={ao.id} />
+                      <input
+                        type="number"
+                        name="price_idr"
+                        value={ao.price_idr}
+                        class="border border-gray-200 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 outline-none focus:border-roseaccent focus:ring-2 focus:ring-roseaccent/20 w-36 transition-all"
+                      />
+                      <button type="submit" class="bg-blush text-darkpink hover:bg-roseaccent hover:text-white font-bold text-xs rounded-xl px-4 py-2 transition-all border border-roseaccent/20 shadow-sm">
+                        Save
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </section>
+
+    <!-- Regional Pricing -->
+    <section>
+      <h2 class="text-sm font-display font-bold text-gray-500 uppercase tracking-wider mb-4">Regional Pricing</h2>
+      <p class="text-xs text-gray-500 mb-4 font-medium bg-blue-50 text-blue-800 p-4 rounded-2xl border border-blue-100 shadow-sm">
+        <strong class="text-blue-900 font-bold">Exchange rate</strong>: How many IDR = 1 unit of that currency (e.g. 1 USD = 15000 IDR → enter 15000).<br />
+        <strong class="text-blue-900 font-bold mt-1 block">Regional multiplier</strong>: Price adjustment factor. 1.0 = standard price.
+      </p>
+      <div class="bg-white/80 backdrop-blur-md shadow-soft border border-white/60 rounded-3xl overflow-hidden">
+        {regions.length === 0 ? (
+          <div class="p-10 text-center text-gray-400 font-bold font-display text-lg">No regions found. Seed your database first.</div>
+        ) : (
+          <table class="w-full text-sm">
+            <thead class="bg-blush/30 border-b border-roseaccent/20">
+              <tr>
+                <th class="px-5 py-4 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Region / Currency</th>
+                <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Exchange Rate (IDR/unit)</th>
+                <th class="px-5 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Multiplier</th>
+                <th class="px-5 py-4"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100/50">
+              {regions.map(r => (
+                <tr class="hover:bg-blush/20 transition-colors group">
+                  <td class="px-5 py-4">
+                    <div class="font-bold text-gray-800 text-base">{r.region_name}</div>
+                    <div class="text-xs text-gray-500 font-mono mt-0.5">{r.currency_code} ({r.currency_symbol})</div>
+                  </td>
+                  <td class="px-5 py-4" colspan="2">
+                    <form method="POST" class="flex flex-wrap items-center gap-3">
+                      <input type="hidden" name="action" value="update_region" />
+                      <input type="hidden" name="region_id" value={r.id} />
+                      <input
+                        type="number"
+                        name="exchange_rate"
+                        value={r.exchange_rate}
+                        step="0.01"
+                        class="border border-gray-200 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 outline-none focus:border-roseaccent focus:ring-2 focus:ring-roseaccent/20 w-36 transition-all"
+                      />
+                      <input
+                        type="number"
+                        name="regional_multiplier"
+                        value={r.regional_multiplier}
+                        step="0.01"
+                        class="border border-gray-200 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 outline-none focus:border-roseaccent focus:ring-2 focus:ring-roseaccent/20 w-28 transition-all"
+                      />
+                      <button type="submit" class="bg-blush text-darkpink hover:bg-roseaccent hover:text-white font-bold text-xs rounded-xl px-4 py-2 transition-all border border-roseaccent/20 shadow-sm ml-auto">
+                        Save
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </section>
+  </div>
+</AdminLayout>

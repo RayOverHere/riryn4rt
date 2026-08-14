@@ -1,0 +1,218 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Quicksand:wght@300..700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* ── Atmospheric Palette ── */
+  --color-blush: #fff0f3;
+  --color-candy: #ffe4ec;
+  --color-babypink: #ffc8d8;
+  --color-roseaccent: #f4a0bb;
+  --color-rosemid: #e8849f;
+  --color-cream: #fdfaf8;
+  --color-offwhite: #faf7f5;
+  --color-warmwhite: #fefcfb;
+  --color-lavender: #f5f3ff;
+  --color-lavenderpale: #faf9ff;
+
+  /* ── Text Palette ── */
+  --color-darkpink: #6b4155;
+  --color-darkpink-muted: #896172;
+  --color-darkpink-deep: #3d1f2e;
+  --color-darkpink-subtle: #b89ba5;
+
+  /* ── Fonts ── */
+  --font-display: 'Fredoka', cursive, sans-serif;
+  --font-sans: 'Quicksand', sans-serif;
+}
+
+/* ═══════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════ */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-darkpink);
+    margin: 0;
+    padding: 0;
+    /* Layered atmospheric background */
+    background-color: #fdfaf8;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 15% 10%, rgba(255, 220, 232, 0.55) 0%, transparent 65%),
+      radial-gradient(ellipse 70% 60% at 85% 5%,  rgba(255, 200, 220, 0.35) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 70% at 90% 80%, rgba(255, 228, 236, 0.45) 0%, transparent 55%),
+      radial-gradient(ellipse 80% 40% at 10% 90%, rgba(255, 240, 248, 0.5)  0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 50% 50%, rgba(253, 250, 248, 1)     0%, transparent 100%);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--color-darkpink-deep);
+  }
+
+  /* Pink scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #fff5f8; }
+  ::-webkit-scrollbar-thumb { background: var(--color-babypink); border-radius: 99px; border: 2px solid #fff5f8; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-roseaccent); }
+
+  ::selection { background: var(--color-babypink); color: var(--color-darkpink-deep); }
+}
+
+/* ═══════════════════════════════════════════
+   DESIGN SYSTEM — COMPONENTS
+═══════════════════════════════════════════ */
+
+/* ── Cards ── */
+.cute-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid var(--color-candy);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 0 var(--color-candy), 0 8px 24px rgba(180, 90, 120, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.cute-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 7px 0 var(--color-babypink), 0 12px 32px rgba(180, 90, 120, 0.1);
+}
+
+/* Gallery cards — no translate-hover (they open lightbox) */
+.gallery-card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 2px solid var(--color-candy);
+  border-radius: 1.25rem;
+  box-shadow: 0 3px 12px rgba(180, 90, 120, 0.07);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+  overflow: hidden;
+  cursor: pointer;
+}
+.gallery-card:hover {
+  box-shadow: 0 8px 28px rgba(180, 90, 120, 0.16);
+  transform: translateY(-2px);
+}
+
+/* Glass surface — for navbar/overlays */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1.5px solid rgba(255, 200, 216, 0.6);
+}
+
+/* ── Buttons ── */
+.cute-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--color-babypink) 0%, var(--color-roseaccent) 100%);
+  color: var(--color-darkpink-deep);
+  font-family: var(--font-display);
+  font-weight: 600;
+  border: 2px solid var(--color-roseaccent);
+  border-radius: 9999px;
+  padding: 0.7rem 1.75rem;
+  box-shadow: 0 4px 0 var(--color-rosemid), 0 6px 16px rgba(180, 90, 120, 0.15);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.cute-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--color-rosemid), 0 10px 20px rgba(180, 90, 120, 0.2);
+}
+.cute-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--color-rosemid);
+}
+
+.cute-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--color-darkpink);
+  font-family: var(--font-display);
+  font-weight: 600;
+  border: 2px solid var(--color-babypink);
+  border-radius: 9999px;
+  padding: 0.7rem 1.75rem;
+  box-shadow: 0 4px 0 var(--color-candy);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.cute-btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--color-babypink);
+  border-color: var(--color-roseaccent);
+  color: var(--color-darkpink-deep);
+}
+.cute-btn-secondary:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--color-candy);
+}
+
+/* ── Inputs ── */
+.cute-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid var(--color-candy);
+  border-radius: 0.875rem;
+  padding: 0.7rem 1rem;
+  color: var(--color-darkpink-deep);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.cute-input:focus {
+  border-color: var(--color-roseaccent);
+  box-shadow: 0 0 0 3px rgba(244, 160, 187, 0.2);
+}
+.cute-input::placeholder { color: var(--color-darkpink-subtle); }
+
+/* ── Section divider ── */
+.section-divider {
+  width: 3rem;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-babypink), var(--color-roseaccent));
+  border-radius: 99px;
+  margin: 0.5rem auto 0;
+}
+
+/* ── Fade-in animation ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.4s ease forwards; }
+
+@keyframes floatUp {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float { animation: floatUp 4s ease-in-out infinite; }
+
+/* ── Atmospheric decorative blobs (used in BaseLayout) ── */
+.atmo-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: -1;
+}
+

@@ -1,0 +1,27 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import GalleryExhibition from '../components/ui/GalleryExhibition';
+import { getArtworks, getCategories } from '../lib/db';
+
+const artworks = await getArtworks(false); // get only published, non-hidden artworks
+const categories = await getCategories();
+---
+
+<BaseLayout title="Gallery | Mochi's Art Studio 🎨">
+  <section class="max-w-6xl mx-auto px-4 py-12 md:py-20">
+    <!-- Header -->
+    <div class="flex flex-col items-center text-center gap-4 mb-16 relative">
+      <div class="absolute -top-10 text-4xl animate-pulse select-none">🎨</div>
+      <h1 class="text-4xl sm:text-6xl font-display text-darkpink-deep">
+        Art Exhibition
+      </h1>
+      <p class="text-lg sm:text-xl font-medium text-darkpink-muted max-w-xl leading-relaxed">
+        Step into my digital sketchbook! Select a category below to filter the pieces, or click on any artwork to view details and notes.
+      </p>
+      <div class="w-24 h-1.5 bg-babypink rounded-full mt-2"></div>
+    </div>
+
+    <!-- React Gallery Island -->
+    <GalleryExhibition client:load initialArtworks={artworks} categories={categories} />
+  </section>
+</BaseLayout>

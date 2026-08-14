@@ -1,0 +1,388 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getSupabaseAdmin } from '../../lib/supabase';
+import { getArtistProfile } from '../../lib/db';
+
+const sessionCookie = Astro.cookies.get('sb-session');
+if (!sessionCookie?.value) {
+  return Astro.redirect('/admin/login');
+}
+
+const admin = getSupabaseAdmin();
+let successMsg = '';
+let errorMsg = '';
+
+// Handle POST: update profile
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const action = formData.get('action') as string;
+
+    if (action === 'update_profile') {
+      const display_name = formData.get('display_name') as string;
+      const tagline = formData.get('tagline') as string;
+      const bio = formData.get('bio') as string;
+      const location = formData.get('location') as string;
+      const profile_image_url = formData.get('profile_image_url') as string;
+      const commission_availability = formData.get('commission_availability') === 'true';
+      const commission_slots_total = parseInt(formData.get('commission_slots_total') as string) || 10;
+      const commission_slots_available = parseInt(formData.get('commission_slots_available') as string) || 5;
+
+      // Parse social links
+      const social_links: Record<string, string> = {};
+      const twitter = formData.get('twitter') as string;
+      const instagram = formData.get('instagram') as string;
+      const deviantart = formData.get('deviantart') as string;
+
+      if (twitter) social_links.twitter = twitter;
+      if (instagram) social_links.instagram = instagram;
+      if (deviantart) social_links.deviantart = deviantart;
+
+      // Fetch the actual UUID of the single profile row (NEVER use .eq('id', 1) — id is a UUID)
+      const { data: existingRows, error: fetchErr } = await admin.from('artist_profile').select('id').limit(1);
+      if (fetchErr) throw fetchErr;
+
+      if (!existingRows || existingRows.length === 0) {
+        // No profile row yet — insert one
+        const { error } = await admin.from('artist_profile').insert({
+          name: display_name,
+          display_name,
+          tagline,
+          bio,
+          full_bio: bio,
+          short_intro: tagline,
+          location,
+          profile_image_url,
+          commission_availability,
+          commission_slots_total,
+          commission_slots_available,
+          social_links,
+          updated_at: new Date().toISOString()
+        });
+        if (error) throw error;
+      } else {
+        const profileId = existingRows[0].id;
+        const { error } = await admin.from('artist_profile').update({
+          display_name,
+          tagline,
+          bio,
+          full_bio: bio,
+          short_intro: tagline,
+          location,
+          profile_image_url,
+          commission_availability,
+          commission_slots_total,
+          commission_slots_available,
+          social_links,
+          updated_at: new Date().toISOString()
+        }).eq('id', profileId);
+        if (error) throw error;
+      }
+
+      successMsg = 'Artist profile updated successfully!';
+    }
+  } catch (e: any) {
+    console.error('[admin/profile] Update error:', e);
+    errorMsg = e.message || 'Update failed.';
+  }
+}
+
+// Fetch current profile
+const profile = await getArtistProfile();
+---
+
+<AdminLayout title="Artist Profile | Admin">
+  <div class="p-6 md:p-8 flex flex-col gap-8 max-w-3xl">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-800">Artist Profile</h1>
+      <p class="text-gray-500 text-sm mt-1">Manage your public artist profile and commission availability settings.</p>
+    </div>
+
+    {successMsg && (
+      <div class="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 font-semibold text-sm">✅ {successMsg}</div>
+    )}
+    {errorMsg && (
+      <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 font-semibold text-sm">⚠️ {errorMsg}</div>
+    )}
+
+    <form method="POST" class="flex flex-col gap-6">
+      <input type="hidden" name="action" value="update_profile" />
+
+      <!-- Profile Preview -->
+      <div class="bg-gradient-to-br from-pink-50 to-rose-50 border-2 border-pink-100 rounded-2xl p-6 flex items-center gap-4">
+        <img
+          id="profile-preview"
+          src={profile.profile_image_url || '/images/mochi-profile.svg'}
+          alt="Profile Preview"
+          class="w-20 h-20 rounded-full border-4 border-pink-200 object-cover"
+        />
+        <div>
+          <div id="preview-name" class="text-xl font-bold text-gray-800">{profile.display_name}</div>
+          <div id="preview-tagline" class="text-sm text-pink-600 font-semibold">{profile.tagline}</div>
+          <div class="text-xs text-gray-400 mt-1">{profile.location}</div>
+        </div>
+      </div>
+
+      <!-- Main Info -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
+        <h2 class="font-bold text-gray-700 text-sm uppercase tracking-wider">Basic Info</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-gray-500 uppercase">Display Name *</label>
+            <input type="text" name="display_name" value={profile.display_name} required
+              class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-gray-500 uppercase">Location</label>
+            <input type="text" name="location" value={profile.location}
+              class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400"
+              placeholder="e.g. Jakarta, Indonesia" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold text-gray-500 uppercase">Tagline</label>
+          <input type="text" name="tagline" value={profile.tagline}
+            class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400"
+            placeholder="e.g. Soft & dreamy digital art commissions" />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold text-gray-500 uppercase">Bio</label>
+          <textarea name="bio" rows="4"
+            class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400 resize-none"
+            placeholder="Tell your story...">{profile.bio}</textarea>
+        </div>
+
+        <!-- Dual Mode Profile Image Uploader -->
+        <div class="flex flex-col gap-2">
+          <label class="text-xs font-bold text-gray-500 uppercase">Profile Avatar Image</label>
+          
+          <!-- Mode Tabs -->
+          <div class="flex gap-2 border-b border-gray-200 pb-2">
+            <button type="button" id="tab-file-btn" class="px-3 py-1 text-xs font-bold rounded-lg bg-pink-100 text-pink-700 transition-colors cursor-pointer">
+              📁 Upload Avatar File (Auto WebP)
+            </button>
+            <button type="button" id="tab-url-btn" class="px-3 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer">
+              🔗 Social Media / Direct Link
+            </button>
+          </div>
+
+          <!-- Hidden Input for Form Submission -->
+          <input type="hidden" name="profile_image_url" id="profile-url-hidden" value={profile.profile_image_url} />
+
+          <!-- Mode 1: File Dropzone (Default) -->
+          <div id="mode-file-container" class="flex flex-col gap-2">
+            <div class="border-2 border-dashed border-pink-300 hover:border-pink-500 rounded-xl p-4 bg-pink-50/40 text-center relative transition-colors cursor-pointer">
+              <input type="file" id="profile-file-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+              <div class="flex flex-col items-center gap-1 pointer-events-none">
+                <span class="text-2xl">📸</span>
+                <span class="text-xs font-bold text-gray-700">Click or drop avatar photo</span>
+                <span class="text-[10px] text-gray-400">Converts to WebP for fast studio loading</span>
+              </div>
+            </div>
+            <div id="upload-status" class="text-xs font-semibold"></div>
+          </div>
+
+          <!-- Mode 2: Direct / Social Media Link (Hidden by default) -->
+          <div id="mode-url-container" class="hidden flex-col gap-2">
+            <input
+              type="url"
+              id="profile-url-input"
+              value={profile.profile_image_url}
+              placeholder="Paste image link from Instagram, X/Twitter, or direct URL..."
+              class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400"
+            />
+            <p class="text-xs text-gray-400">Paste direct image URL from social media avatar or external host.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Commission Availability -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
+        <h2 class="font-bold text-gray-700 text-sm uppercase tracking-wider">Commission Availability</h2>
+
+        <div class="flex items-center gap-4">
+          <div class="flex flex-col gap-1 flex-1">
+            <label class="text-xs font-bold text-gray-500 uppercase">Status</label>
+            <select name="commission_availability" class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400">
+              <option value="true" selected={profile.commission_availability}>🟢 Open – Accepting Commissions</option>
+              <option value="false" selected={!profile.commission_availability}>🔴 Closed – Not Accepting</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-gray-500 uppercase">Total Slots</label>
+            <input type="number" name="commission_slots_total" value={profile.commission_slots_total} min="1" max="100"
+              class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-gray-500 uppercase">Available Slots</label>
+            <input type="number" name="commission_slots_available" value={profile.commission_slots_available} min="0" max="100"
+              class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Social Links -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
+        <h2 class="font-bold text-gray-700 text-sm uppercase tracking-wider">Social Links</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-gray-500 uppercase">🐦 Twitter / X URL</label>
+            <input type="url" name="twitter" value={profile.social_links?.twitter || ''}
+              class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400"
+              placeholder="https://x.com/..." />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-gray-500 uppercase">📷 Instagram URL</label>
+            <input type="url" name="instagram" value={profile.social_links?.instagram || ''}
+              class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400"
+              placeholder="https://instagram.com/..." />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-gray-500 uppercase">🎨 DeviantArt URL</label>
+            <input type="url" name="deviantart" value={profile.social_links?.deviantart || ''}
+              class="border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-pink-400"
+              placeholder="https://www.deviantart.com/..." />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button type="submit" class="bg-pink-600 hover:bg-pink-700 text-white font-bold rounded-xl px-6 py-3 transition-colors cursor-pointer">
+          Save Profile Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</AdminLayout>
+
+<script>
+  const previewImg = document.getElementById('profile-preview') as HTMLImageElement;
+  const hiddenUrlInput = document.getElementById('profile-url-hidden') as HTMLInputElement;
+  const urlInput = document.getElementById('profile-url-input') as HTMLInputElement;
+  const fileInput = document.getElementById('profile-file-input') as HTMLInputElement;
+  const statusDiv = document.getElementById('upload-status');
+
+  const tabFileBtn = document.getElementById('tab-file-btn');
+  const tabUrlBtn = document.getElementById('tab-url-btn');
+  const modeFile = document.getElementById('mode-file-container');
+  const modeUrl = document.getElementById('mode-url-container');
+
+  tabFileBtn?.addEventListener('click', () => {
+    modeFile?.classList.remove('hidden');
+    modeFile?.classList.add('flex');
+    modeUrl?.classList.add('hidden');
+    modeUrl?.classList.remove('flex');
+    if (tabFileBtn) tabFileBtn.className = 'px-3 py-1 text-xs font-bold rounded-lg bg-pink-100 text-pink-700 transition-colors cursor-pointer';
+    if (tabUrlBtn) tabUrlBtn.className = 'px-3 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer';
+  });
+
+  tabUrlBtn?.addEventListener('click', () => {
+    modeUrl?.classList.remove('hidden');
+    modeUrl?.classList.add('flex');
+    modeFile?.classList.add('hidden');
+    modeFile?.classList.remove('flex');
+    if (tabUrlBtn) tabUrlBtn.className = 'px-3 py-1 text-xs font-bold rounded-lg bg-pink-100 text-pink-700 transition-colors cursor-pointer';
+    if (tabFileBtn) tabFileBtn.className = 'px-3 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer';
+  });
+
+  // Direct URL paste
+  urlInput?.addEventListener('input', () => {
+    const val = urlInput.value.trim();
+    if (val) {
+      hiddenUrlInput.value = val;
+      if (previewImg) previewImg.src = val;
+    }
+  });
+
+  // WebP Image Conversion & Supabase Storage Upload
+  fileInput?.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+
+    if (statusDiv) {
+      statusDiv.textContent = '🔄 Converting avatar to WebP format...';
+      statusDiv.className = 'text-xs text-pink-600 font-semibold animate-pulse';
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        const maxDim = 800; // Avatar sizing limit
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            if (statusDiv) {
+              statusDiv.textContent = '❌ WebP conversion failed';
+              statusDiv.className = 'text-xs text-red-500 font-bold';
+            }
+            return;
+          }
+
+          if (statusDiv) {
+            statusDiv.textContent = '⚡ WebP converted! Uploading avatar...';
+          }
+
+          const webpFile = new File([blob], `avatar_${file.name.replace(/\.[^/.]+$/, "")}.webp`, { type: 'image/webp' });
+          const formData = new FormData();
+          formData.append('file', webpFile);
+
+          try {
+            const res = await fetch('/api/upload-artwork', {
+              method: 'POST',
+              body: formData
+            });
+
+            const data = await res.json();
+            if (res.ok && data.url) {
+              hiddenUrlInput.value = data.url;
+              if (previewImg) previewImg.src = data.url;
+
+              if (statusDiv) {
+                statusDiv.textContent = `✅ Avatar uploaded & converted to WebP (${(blob.size / 1024).toFixed(1)} KB)`;
+                statusDiv.className = 'text-xs text-green-600 font-bold';
+              }
+            } else {
+              if (statusDiv) {
+                statusDiv.textContent = `⚠️ Storage upload notice: ${data.error || 'Failed'}`;
+                statusDiv.className = 'text-xs text-amber-600 font-semibold';
+              }
+            }
+          } catch (err: any) {
+            if (statusDiv) {
+              statusDiv.textContent = `❌ Network error: ${err.message}`;
+              statusDiv.className = 'text-xs text-red-500 font-bold';
+            }
+          }
+        }, 'image/webp', 0.85);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+</script>

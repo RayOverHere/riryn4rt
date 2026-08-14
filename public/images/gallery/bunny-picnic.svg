@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#bae6fd" />
+      <stop offset="100%" stop-color="#f0f9ff" />
+    </linearGradient>
+  </defs>
+  <!-- Background sky -->
+  <rect width="400" height="500" rx="20" fill="url(#sky)" />
+
+  <!-- Green Grass Hills -->
+  <path d="M-20 300 Q100 240 250 280 T420 270 L420 500 L-20 500 Z" fill="#6ee7b7" />
+  <path d="M-20 350 Q120 320 280 340 T420 310 L420 500 L-20 500 Z" fill="#34d399" />
+
+  <!-- Sun -->
+  <circle cx="80" cy="80" r="30" fill="#fef08a" />
+
+  <!-- Clouds -->
+  <path d="M250 100 C270 100 280 90 295 90 C310 90 320 105 335 105 L335 125 L250 125 Z" fill="#fff" opacity="0.8" />
+
+  <!-- Pink Checked Picnic Blanket -->
+  <path d="M70 380 L330 380 L370 470 L30 470 Z" fill="#ffe5ec" stroke="#704c50" stroke-width="5" stroke-linejoin="round" />
+  <!-- Red Stripes -->
+  <path d="M120 380 L140 380 L100 470 L70 470 Z" fill="#ffb3c1" opacity="0.6" />
+  <path d="M200 380 L220 380 L200 470 L170 470 Z" fill="#ffb3c1" opacity="0.6" />
+  <path d="M280 380 L300 380 L300 470 L270 470 Z" fill="#ffb3c1" opacity="0.6" />
+  <path d="M70 400 L340 400 L345 415 L65 415 Z" fill="#ffb3c1" opacity="0.6" />
+  <path d="M50 435 L350 435 L355 450 L40 450 Z" fill="#ffb3c1" opacity="0.6" />
+
+  <!-- Bunny Character (Cute round animal representation) -->
+  <g transform="translate(160, 310)">
+    <!-- Ears -->
+    <rect x="25" y="0" width="12" height="40" rx="6" fill="#fff" stroke="#704c50" stroke-width="4" />
+    <rect x="28" y="5" width="6" height="25" rx="3" fill="#ffccd5" />
+    <rect x="43" y="0" width="12" height="40" rx="6" fill="#fff" stroke="#704c50" stroke-width="4" />
+    <rect x="46" y="5" width="6" height="25" rx="3" fill="#ffccd5" />
+    
+    <!-- Face -->
+    <circle cx="40" cy="50" r="25" fill="#fff" stroke="#704c50" stroke-width="4" />
+    
+    <!-- Eyes -->
+    <circle cx="32" cy="48" r="3" fill="#704c50" />
+    <circle cx="48" cy="48" r="3" fill="#704c50" />
+    <!-- Cheeks -->
+    <ellipse cx="28" cy="54" rx="4" ry="2.5" fill="#ffccd5" />
+    <ellipse cx="52" cy="54" rx="4" ry="2.5" fill="#ffccd5" />
+    <!-- Nose -->
+    <path d="M38 52 L42 52 L40 54 Z" fill="#ffb3c1" />
+  </g>
+
+  <!-- Picnic Basket -->
+  <rect x="70" y="390" width="50" height="40" rx="5" fill="#d97706" stroke="#704c50" stroke-width="4" />
+  <!-- Handle -->
+  <path d="M75 390 C75 375 115 375 115 390" fill="none" stroke="#704c50" stroke-width="4" />
+  <!-- Cloth in basket -->
+  <path d="M68 395 C75 390 90 395 95 390 L95 405 L65 405 Z" fill="#ffccd5" />
+
+  <!-- Plate with cupcakes -->
+  <ellipse cx="280" cy="410" rx="30" ry="12" fill="#fffaf0" stroke="#704c50" stroke-width="3" />
+  <path d="M265 395 C265 385 275 385 275 395 C275 385 285 385 285 395 C285 385 295 385 295 395 Z" fill="#ffccd5" stroke="#704c50" stroke-width="2" />
+
+  <!-- Cozy Title Tag -->
+  <rect x="130" y="450" width="140" height="30" rx="15" fill="#704c50" />
+  <text x="200" y="470" fill="#fffaf0" font-family="'Fredoka', sans-serif" font-size="14" font-weight="bold" text-anchor="middle">Sweet Bunny Picnic</text>
+</svg>

@@ -1,0 +1,141 @@
+---
+import '../../styles/global.css';
+
+// If already logged in, redirect to admin
+const sessionCookie = Astro.cookies.get('sb-session');
+if (sessionCookie?.value) {
+  return Astro.redirect('/admin');
+}
+
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    const supabaseUrl = import.meta.env.SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      error = 'Supabase is not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY in your .env file.';
+    } else {
+      const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        error = data.error_description || data.error || 'Invalid email or password.';
+      } else {
+        // Set session cookie
+        const session = JSON.stringify({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token
+        });
+
+        Astro.cookies.set('sb-session', session, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 7, // 7 days
+          path: '/'
+        });
+
+        return Astro.redirect('/admin');
+      }
+    }
+  } catch (e: any) {
+    error = e.message || 'Login failed.';
+  }
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Admin Login | MochiArt Studio</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/styles/global.css" />
+  </head>
+  <body class="bg-cream min-h-screen flex items-center justify-center p-4" style="font-family: 'Quicksand', sans-serif; background-color: #fdfbf7;">
+    <!-- Background decor -->
+    <div style="position:fixed;top:-60px;right:-60px;width:300px;height:300px;border-radius:50%;background:rgba(255,204,213,0.25);filter:blur(60px);z-index:0;pointer-events:none;"></div>
+    <div style="position:fixed;bottom:-60px;left:-60px;width:300px;height:300px;border-radius:50%;background:rgba(255,229,236,0.25);filter:blur(60px);z-index:0;pointer-events:none;"></div>
+
+    <div style="position:relative;z-index:1;width:100%;max-width:420px;">
+      <!-- Logo -->
+      <div style="text-align:center;margin-bottom:2rem;">
+        <a href="/" style="font-family:'Fredoka',sans-serif;font-size:2rem;font-weight:700;color:#4a2f32;text-decoration:none;">
+          🍓 MochiArt Studio
+        </a>
+        <p style="color:#8c6e72;font-weight:600;margin-top:0.25rem;font-size:0.9rem;">Admin Portal</p>
+      </div>
+
+      <!-- Card -->
+      <div style="background:white;border:3px solid #ffccd5;border-radius:1.5rem;padding:2rem;box-shadow:0 6px 0 #ffe5ec;">
+        <h1 style="font-family:'Fredoka',sans-serif;font-size:1.75rem;color:#4a2f32;margin:0 0 1.5rem 0;text-align:center;">
+          Artist Login
+        </h1>
+
+        {error && (
+          <div style="background:#fff1f2;border:2px solid #fecdd3;border-radius:0.75rem;padding:0.75rem 1rem;color:#be123c;font-weight:600;font-size:0.85rem;margin-bottom:1.25rem;">
+            🚨 {error}
+          </div>
+        )}
+
+        <form method="POST" style="display:flex;flex-direction:column;gap:1.25rem;">
+          <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            <label style="font-weight:700;color:#4a2f32;font-family:'Fredoka',sans-serif;">Email Address</label>
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder="artist@example.com"
+              style="background:white;border:3px solid #ffccd5;border-radius:1rem;padding:0.75rem 1rem;color:#704c50;outline:none;font-family:'Quicksand',sans-serif;font-size:1rem;width:100%;box-sizing:border-box;"
+            />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            <label style="font-weight:700;color:#4a2f32;font-family:'Fredoka',sans-serif;">Password</label>
+            <input
+              type="password"
+              name="password"
+              required
+              placeholder="••••••••"
+              style="background:white;border:3px solid #ffccd5;border-radius:1rem;padding:0.75rem 1rem;color:#704c50;outline:none;font-family:'Quicksand',sans-serif;font-size:1rem;width:100%;box-sizing:border-box;"
+            />
+          </div>
+          <button
+            type="submit"
+            style="background:#ffccd5;color:#4a2f32;font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.1rem;border:3px solid #ffb3c1;border-radius:9999px;padding:0.85rem 2rem;box-shadow:0 4px 0 #ffb3c1;cursor:pointer;transition:all 0.15s ease;margin-top:0.5rem;"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 0 #ffb3c1'"
+            onmouseout="this.style.transform='';this.style.boxShadow='0 4px 0 #ffb3c1'"
+          >
+            Sign In to Studio 🎨
+          </button>
+        </form>
+
+        <p style="text-align:center;margin-top:1.5rem;font-size:0.8rem;color:#8c6e72;font-weight:600;">
+          <a href="/" style="color:#ffb3c1;text-decoration:none;">← Return to public site</a>
+        </p>
+      </div>
+
+      <p style="text-align:center;margin-top:1rem;font-size:0.75rem;color:#8c6e72;font-weight:600;">
+        This portal is for the artist only. Visitors should <a href="/commissions" style="color:#ffb3c1;">submit commission requests here</a>.
+      </p>
+    </div>
+  </body>
+</html>

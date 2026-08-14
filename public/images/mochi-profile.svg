@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bg-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff0f3" />
+      <stop offset="100%" stop-color="#ffccd5" />
+    </radialGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#704c50" flood-opacity="0.15" />
+    </filter>
+  </defs>
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="95" fill="url(#bg-grad)" stroke="#ffb3c1" stroke-width="4" />
+  
+  <!-- Easel/Canvas outline -->
+  <rect x="50" y="50" width="100" height="80" rx="10" fill="#ffffff" stroke="#704c50" stroke-width="4" filter="url(#shadow)" />
+  <line x1="60" y1="130" x2="40" y2="170" stroke="#704c50" stroke-width="4" stroke-linecap="round" />
+  <line x1="140" y1="130" x2="160" y2="170" stroke="#704c50" stroke-width="4" stroke-linecap="round" />
+  <line x1="100" y1="130" x2="100" y2="175" stroke="#704c50" stroke-width="4" stroke-linecap="round" />
+  
+  <!-- Drawing on canvas (cute strawberry) -->
+  <path d="M100 65 C85 65 80 80 80 90 C80 105 100 115 100 115 C100 115 120 105 120 90 C120 80 115 65 100 65 Z" fill="#ff85a1" stroke="#4a2f32" stroke-width="3" />
+  <path d="M100 60 C98 65 102 65 100 60 Z" stroke="#704c50" stroke-width="3" fill="none" stroke-linecap="round" />
+  <!-- Leaf -->
+  <path d="M95 65 C95 62 100 61 100 65 C100 61 105 62 105 65" fill="#a7f3d0" stroke="#4a2f32" stroke-width="2" />
+  <!-- Seeds -->
+  <circle cx="95" cy="85" r="1" fill="#ffffff" />
+  <circle cx="105" cy="85" r="1" fill="#ffffff" />
+  <circle cx="100" cy="95" r="1" fill="#ffffff" />
+  <circle cx="90" cy="95" r="1" fill="#ffffff" />
+  <circle cx="110" cy="95" r="1" fill="#ffffff" />
+
+  <!-- Painter palette -->
+  <path d="M35 110 C25 110 20 130 35 140 C45 145 60 135 50 120 C47 115 40 110 35 110 Z" fill="#fffaf0" stroke="#704c50" stroke-width="3" />
+  <circle cx="30" cy="122" r="3" fill="#ffccd5" />
+  <circle cx="38" cy="130" r="3" fill="#f5f3ff" />
+  <circle cx="45" cy="125" r="3" fill="#a7f3d0" />
+
+  <!-- Cute Cat peeking from bottom right -->
+  <path d="M135 200 C135 170 185 170 185 200 Z" fill="#704c50" />
+  <!-- Ears -->
+  <polygon points="140,175 155,160 160,180" fill="#704c50" stroke="#704c50" stroke-width="2" stroke-linejoin="round" />
+  <polygon points="180,175 165,160 160,180" fill="#704c50" stroke="#704c50" stroke-width="2" stroke-linejoin="round" />
+  <polygon points="143,174 152,164 155,176" fill="#ffccd5" />
+  <polygon points="177,174 168,164 165,176" fill="#ffccd5" />
+  <!-- Eyes -->
+  <circle cx="152" cy="183" r="2.5" fill="#ffffff" />
+  <circle cx="168" cy="183" r="2.5" fill="#ffffff" />
+  <!-- Nose/mouth -->
+  <path d="M158 188 L162 188 L160 190 Z" fill="#ffccd5" />
+</svg>

@@ -1,0 +1,5 @@
+---
+// Clear session cookie and redirect to login
+Astro.cookies.delete('sb-session', { path: '/' });
+return Astro.redirect('/admin/login');
+---

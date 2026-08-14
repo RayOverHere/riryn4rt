@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="tea-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff0f3" />
+      <stop offset="100%" stop-color="#ffe5ec" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="400" height="500" rx="20" fill="url(#tea-bg)" />
+
+  <!-- Drapes at the top -->
+  <path d="M-10 0 C40 80 160 80 200 0 C240 80 360 80 410 0 L410 40 L-10 40 Z" fill="#ffccd5" stroke="#704c50" stroke-width="4" />
+  <circle cx="100" cy="50" r="8" fill="#fff" />
+  <circle cx="300" cy="50" r="8" fill="#fff" />
+
+  <!-- Big Table with lace border -->
+  <path d="M20 380 L380 380 C390 380 400 395 390 410 L350 500 L50 500 L10 410 C0 395 10 380 20 380 Z" fill="#ffffff" stroke="#704c50" stroke-width="5" />
+  <!-- Lace circles -->
+  <circle cx="30" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="60" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="90" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="120" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="150" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="180" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="210" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="240" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="270" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="300" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="330" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+  <circle cx="360" cy="385" r="8" fill="#ffe5ec" stroke="#704c50" stroke-width="3" />
+
+  <!-- Teapot in center -->
+  <g transform="translate(160, 240)">
+    <path d="M40 50 C10 50 10 90 40 100 C70 100 70 50 40 50 Z" fill="#ffccd5" stroke="#704c50" stroke-width="4" />
+    <path d="M40 45 L40 50 L40 45 Z" stroke="#704c50" stroke-width="4" fill="none" />
+    <!-- Lid -->
+    <path d="M25 50 C25 40 55 40 55 50 Z" fill="#ffb3c1" stroke="#704c50" stroke-width="4" />
+    <circle cx="40" cy="36" r="6" fill="#fff" stroke="#704c50" stroke-width="3" />
+    <!-- Handle -->
+    <path d="M15 60 C-5 60 -5 90 15 90" fill="none" stroke="#704c50" stroke-width="4" />
+    <!-- Spout -->
+    <path d="M65 70 C85 60 90 70 85 85" fill="none" stroke="#704c50" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  <!-- Cup of tea on the left -->
+  <path d="M70 350 L110 350 L105 370 L75 370 Z" fill="#fffaf0" stroke="#704c50" stroke-width="3" />
+  <path d="M110 355 C116 355 116 365 110 365" fill="none" stroke="#704c50" stroke-width="3" />
+  <ellipse cx="90" cy="372" rx="20" ry="5" fill="#fffaf0" stroke="#704c50" stroke-width="3" />
+
+  <!-- Tiered cake stand on the right -->
+  <!-- Stand stick -->
+  <line x1="290" y1="230" x2="290" y2="370" stroke="#704c50" stroke-width="5" />
+  <!-- Bottom tier -->
+  <ellipse cx="290" cy="370" rx="55" ry="12" fill="#fff" stroke="#704c50" stroke-width="4" />
+  <!-- Top tier -->
+  <ellipse cx="290" cy="300" rx="40" ry="10" fill="#fff" stroke="#704c50" stroke-width="4" />
+  
+  <!-- Sweets on bottom tier -->
+  <path d="M255 355 C255 350 265 350 265 355 Z" fill="#a7f3d0" stroke="#704c50" stroke-width="2" />
+  <path d="M280 358 C280 352 290 352 290 358 Z" fill="#ffccd5" stroke="#704c50" stroke-width="2" />
+  <path d="M310 355 C310 350 320 350 320 355 Z" fill="#fde047" stroke="#704c50" stroke-width="2" />
+
+  <!-- Cozy Title Tag -->
+  <rect x="130" y="450" width="140" height="30" rx="15" fill="#704c50" />
+  <text x="200" y="470" fill="#fffaf0" font-family="'Fredoka', sans-serif" font-size="14" font-weight="bold" text-anchor="middle">Tea Party Invite</text>
+</svg>

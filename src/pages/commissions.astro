@@ -1,0 +1,76 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CommissionModule from '../components/ui/CommissionModule';
+import { getCommissionTypes, getCountries } from '../lib/db';
+
+const commissionTypes = await getCommissionTypes(false); // only active types
+const countries = await getCountries();
+---
+
+<BaseLayout title="Commissions | Mochi's Art Studio 🍓">
+  <section class="max-w-6xl mx-auto px-4 py-12 md:py-20">
+    
+    <!-- Page Header -->
+    <div class="flex flex-col items-center text-center gap-4 mb-16 relative">
+      <div class="absolute -top-10 text-4xl animate-bounce select-none">🍓</div>
+      <h1 class="text-4xl sm:text-6xl font-display text-darkpink-deep">
+        Art Commissions
+      </h1>
+      <p class="text-lg sm:text-xl font-medium text-darkpink-muted max-w-xl leading-relaxed">
+        Let's bring your characters and sweet concepts to life! Choose your location to see regional rates, select a style, and fill out the request form below.
+      </p>
+      <div class="w-24 h-1.5 bg-babypink rounded-full mt-2"></div>
+    </div>
+
+    <!-- Unified Commission Interactive Module -->
+    <CommissionModule client:load commissionTypes={commissionTypes} countries={countries} />
+
+    <!-- General Policies & Terms of Service -->
+    <section class="max-w-4xl mx-auto mt-24">
+      <div class="cute-card p-8 bg-white flex flex-col gap-6">
+        <h2 class="text-3xl font-display text-darkpink-deep border-b-3 border-dashed border-candy pb-3 text-center sm:text-left">
+          🌸 Terms of Service & Policies
+        </h2>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm leading-relaxed text-darkpink font-medium">
+          <!-- Column 1 -->
+          <div class="flex flex-col gap-4">
+            <div>
+              <h3 class="font-display font-bold text-darkpink-deep text-base mb-1">1. Booking & Payments</h3>
+              <p class="text-darkpink-muted">
+                Work begins only after a 50% deposit has been cleared. For Indonesian clients, I accept BCA or GoPay. For international clients, payments are made securely via PayPal/Stripe invoices. The remaining 50% is due after the sketch is approved.
+              </p>
+            </div>
+            <div>
+              <h3 class="font-display font-bold text-darkpink-deep text-base mb-1">2. Process & Revisions</h3>
+              <p class="text-darkpink-muted">
+                Each commission style comes with a set amount of free revisions during the sketch stage. Please request major adjustments (pose, clothing, layout) during the sketch phase. Once in the coloring phase, only minor color modifications can be made.
+              </p>
+            </div>
+          </div>
+
+          <!-- Column 2 -->
+          <div class="flex flex-col gap-4">
+            <div>
+              <h3 class="font-display font-bold text-darkpink-deep text-base mb-1">3. Copyright & Usage</h3>
+              <p class="text-darkpink-muted">
+                Personal commissions are for personal use only (social media profiles, wallpapers, prints for friends). You may not resell the artwork, use it in merchandise, or use it for AI training. For streaming assets (VTuber, Twitch emotes) or commercial use, check the "Commercial Use" option.
+              </p>
+            </div>
+            <div>
+              <h3 class="font-display font-bold text-darkpink-deep text-base mb-1">4. Refund Policy</h3>
+              <p class="text-darkpink-muted">
+                A full refund is available if I haven't started working on the sketch. If the sketch has been approved and coloring is in progress, only a 30% refund of the total price can be issued. No refunds are possible after the final files have been delivered.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-center text-xs font-semibold text-darkpink-muted/80 bg-blush border border-babypink p-3 rounded-2xl mt-4">
+          By submitting a commission request, you agree to the terms and policies listed above. Feel free to contact me if you have any questions!
+        </div>
+      </div>
+    </section>
+
+  </section>
+</BaseLayout>

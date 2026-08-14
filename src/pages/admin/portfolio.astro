@@ -1,0 +1,711 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getSupabaseAdmin } from '../../lib/supabase';
+
+const sessionCookie = Astro.cookies.get('sb-session');
+if (!sessionCookie?.value) {
+  return Astro.redirect('/admin/login');
+}
+
+const admin = getSupabaseAdmin();
+let artworks: any[] = [];
+let fetchError = '';
+let successMsg = '';
+let errorMsg = '';
+
+// Handle POST actions: add/delete artwork
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const action = formData.get('action') as string;
+
+    if (action === 'delete') {
+      const artworkId = formData.get('artwork_id') as string;
+      
+      // Fetch artwork to check image_url for Storage cleanup
+      const { data: artRow } = await admin.from('artworks').select('image_url').eq('id', artworkId).single();
+      if (artRow && artRow.image_url && artRow.image_url.includes('/storage/v1/object/public/artworks/')) {
+        const pathParts = artRow.image_url.split('/storage/v1/object/public/artworks/');
+        if (pathParts[1]) {
+          await admin.storage.from('artworks').remove([pathParts[1]]);
+        }
+      }
+
+      const { error } = await admin.from('artworks').delete().eq('id', artworkId);
+      if (error) throw error;
+      successMsg = 'Artwork removed successfully from gallery & storage.';
+    }
+
+    if (action === 'add') {
+      const title = formData.get('title') as string;
+      const description = formData.get('description') as string;
+      const imageUrl = formData.get('image_url') as string;
+      const tags = (formData.get('tags') as string).split(',').map(t => t.trim()).filter(Boolean);
+      const featured = formData.get('featured') === 'true';
+      const sortOrder = parseInt(formData.get('sort_order') as string) || 0;
+
+      const { error } = await admin.from('artworks').insert({
+        title, description, image_url: imageUrl, tags, is_featured: featured, display_order: sortOrder
+      });
+      if (error) throw error;
+      successMsg = 'Artwork added to gallery successfully!';
+    }
+
+    if (action === 'toggle_featured') {
+      const artworkId = formData.get('artwork_id') as string;
+      const currentFeatured = formData.get('current_featured') === 'true';
+      const { error } = await admin.from('artworks').update({ is_featured: !currentFeatured }).eq('id', artworkId);
+      if (error) throw error;
+      successMsg = `Artwork ${!currentFeatured ? 'featured' : 'unfeatured'} on homepage.`;
+    }
+
+    if (action === 'edit') {
+      const artworkId = formData.get('artwork_id') as string;
+      const title = formData.get('title') as string;
+      const description = formData.get('description') as string;
+      const imageUrl = formData.get('image_url') as string;
+      const tags = (formData.get('tags') as string).split(',').map(t => t.trim()).filter(Boolean);
+      const featured = formData.get('featured') === 'true';
+      const sortOrder = parseInt(formData.get('sort_order') as string) || 0;
+
+      const { error } = await admin.from('artworks').update({
+        title, description, image_url: imageUrl, tags, is_featured: featured, display_order: sortOrder
+      }).eq('id', artworkId);
+      if (error) throw error;
+      successMsg = 'Artwork updated successfully!';
+    }
+
+  } catch (e: any) {
+    errorMsg = e.message || 'Action failed.';
+  }
+}
+
+// Fetch artworks
+try {
+  const { data, error } = await admin
+    .from('artworks')
+    .select('id, title, description, image_url, tags, is_featured, display_order, created_at')
+    .order('display_order', { ascending: true });
+  if (error) throw error;
+  artworks = data || [];
+} catch (e: any) {
+  fetchError = e.message || 'Failed to load artworks.';
+}
+---
+
+<AdminLayout title="Artworks | Admin">
+  <div class="p-6 md:p-8 flex flex-col gap-8 max-w-5xl">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-display font-bold text-gray-800 tracking-tight">Artwork Manager</h1>
+        <p class="text-gray-500 text-sm mt-1">{artworks.length} artworks in your gallery</p>
+      </div>
+      <button
+        id="show-add-form-btn"
+        class="bg-roseaccent hover:bg-darkpink text-white font-bold text-sm rounded-xl px-4 py-2.5 transition-colors cursor-pointer shadow-sm"
+      >
+        + Add Artwork
+      </button>
+    </div>
+
+    {successMsg && (
+      <div class="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 font-semibold text-sm">✅ {successMsg}</div>
+    )}
+    {errorMsg && (
+      <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 font-semibold text-sm">⚠️ {errorMsg}</div>
+    )}
+    {fetchError && (
+      <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-700 font-semibold text-sm">⚠️ {fetchError}</div>
+    )}
+
+    <!-- Add Artwork Form (hidden by default) -->
+    <div id="add-artwork-form" class="hidden bg-white/80 backdrop-blur-md shadow-soft border border-white/60 rounded-3xl p-6 flex flex-col gap-4">
+      <h2 class="text-xl font-display font-bold text-gray-800">Add New Artwork</h2>
+
+      <!-- Mode Selector Tabs -->
+      <div class="flex gap-2 border-b border-gray-200/60 pb-3">
+        <button type="button" id="tab-file-btn" class="px-4 py-2 text-xs font-bold rounded-xl bg-blush text-darkpink transition-colors cursor-pointer">
+          📁 Upload File (Auto WebP)
+        </button>
+        <button type="button" id="tab-url-btn" class="px-4 py-2 text-xs font-bold rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer">
+          🌐 Social Media / Direct Link Import
+        </button>
+      </div>
+
+      <!-- Mode 1: File Dropzone Form (Default) -->
+      <form id="file-add-form" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+        <input type="hidden" name="action" value="add" />
+        <input type="hidden" name="image_url" id="image-url-hidden" required />
+
+        <div class="flex flex-col gap-1.5 md:col-span-2">
+          <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Title *</label>
+          <input type="text" name="title" required placeholder="e.g. Strawberry Dreams" class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all" />
+        </div>
+
+        <div class="flex flex-col gap-2 md:col-span-2">
+          <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Artwork Image File *</label>
+          <div class="border-2 border-dashed border-roseaccent/30 hover:border-roseaccent rounded-2xl p-6 bg-blush/30 text-center relative transition-colors cursor-pointer">
+            <input type="file" id="artwork-file-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+            <div class="flex flex-col items-center gap-1.5 pointer-events-none">
+              <span class="text-3xl">🖼️</span>
+              <span class="text-sm font-bold text-gray-700">Click or drop an image file</span>
+              <span class="text-xs text-gray-400">Converts to lightweight <b>.webp</b> before uploading</span>
+            </div>
+          </div>
+          <div id="upload-status" class="text-xs font-semibold pl-1"></div>
+
+          <!-- File Upload Preview Card -->
+          <div id="file-preview-container" class="hidden items-center gap-4 bg-white/50 border border-gray-100 rounded-xl p-3 mt-1 shadow-sm">
+            <img id="file-preview-element" src="" alt="Preview" class="w-16 h-16 object-cover rounded-lg border border-gray-200 flex-shrink-0" />
+            <div class="flex flex-col gap-0.5 overflow-hidden">
+              <span class="text-xs font-bold text-gray-700">Image Ready</span>
+              <span id="file-preview-url-text" class="text-xs font-mono text-gray-400 truncate"></span>
+              <span class="text-[10px] bg-green-50 text-green-700 border border-green-100 px-2.5 py-0.5 rounded-full font-bold self-start mt-1">
+                ⚡ Optimized WebP Format
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5 md:col-span-2">
+          <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Description</label>
+          <textarea name="description" rows="2" placeholder="Brief description of the artwork..." class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all resize-none"></textarea>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Tags (comma-separated)</label>
+          <input type="text" name="tags" placeholder="chibi, character, cute" class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all" />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Sort Order</label>
+          <input type="number" name="sort_order" value="0" class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all" />
+        </div>
+        <div class="flex items-center gap-2 pt-2">
+          <input type="checkbox" name="featured" value="true" class="w-4 h-4 accent-roseaccent rounded" />
+          <label class="text-sm font-semibold text-gray-700">Feature on homepage</label>
+        </div>
+        <div class="flex gap-3 md:col-span-2 justify-end pt-2">
+          <button type="button" id="cancel-add-btn" class="border border-gray-200 bg-white rounded-xl px-5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
+            Cancel
+          </button>
+          <button type="submit" class="bg-roseaccent hover:bg-darkpink text-white font-bold text-sm rounded-xl px-6 py-2 transition-colors cursor-pointer shadow-sm">
+            Add to Gallery
+          </button>
+        </div>
+      </form>
+
+      <!-- Mode 2: Social Media / Direct Link Import Section (Hidden by default) -->
+      <div id="mode-url-container" class="hidden flex-col gap-5 pt-2">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Social Media Post or Direct Image URL</label>
+          <div class="flex gap-2">
+            <input
+              type="url"
+              id="social-url-input"
+              placeholder="https://x.com/..., https://www.pinterest.com/pin/..., or direct image URL"
+              class="flex-1 border border-gray-200 bg-white/50 rounded-xl px-4 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all"
+            />
+            <button
+              type="button"
+              id="resolve-url-btn"
+              class="bg-roseaccent hover:bg-darkpink text-white font-bold text-sm rounded-xl px-5 py-2.5 transition-colors cursor-pointer flex items-center gap-2 shadow-sm"
+            >
+              <span>🔍</span> Preview
+            </button>
+          </div>
+          <p class="text-xs text-gray-400 mt-1 pl-1">Supports Twitter/X, Imgur, ArtStation, Pinterest, and direct image links (.jpg, .png, .webp). The server will safely fetch, validate, convert to WebP, and upload to Supabase Storage.</p>
+        </div>
+
+        <!-- Resolution Status / Error Message -->
+        <div id="resolve-status" class="hidden p-3.5 rounded-xl text-xs font-semibold"></div>
+
+        <!-- Preview & Import Card (Appears after successful resolution) -->
+        <div id="social-preview-card" class="hidden border border-roseaccent/20 rounded-2xl p-5 bg-blush/30 flex-col gap-5">
+          <div class="flex flex-col sm:flex-row gap-5 items-start">
+            <img id="social-preview-img" src="" alt="Resolved Preview" class="w-32 h-32 object-cover rounded-xl border border-gray-200 flex-shrink-0 shadow-sm" />
+            <div class="flex flex-col gap-1 text-xs text-gray-600 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="font-display font-bold text-base text-gray-800">Resolved Image Preview</span>
+                <span id="preview-platform-badge" class="bg-blush text-darkpink font-bold px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider"></span>
+              </div>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2 font-mono bg-white/50 p-2.5 rounded-xl border border-white/50">
+                <div><span class="text-gray-400 font-sans text-[11px] uppercase tracking-wider">Source:</span> <span id="meta-source" class="font-bold text-gray-700"></span></div>
+                <div><span class="text-gray-400 font-sans text-[11px] uppercase tracking-wider">Dimensions:</span> <span id="meta-dimensions" class="font-bold text-gray-700"></span></div>
+                <div><span class="text-gray-400 font-sans text-[11px] uppercase tracking-wider">Format:</span> <span id="meta-format" class="font-bold text-gray-700"></span></div>
+                <div><span class="text-gray-400 font-sans text-[11px] uppercase tracking-wider">Est. Size:</span> <span id="meta-size" class="font-bold text-gray-700"></span></div>
+              </div>
+              <div class="text-[11px] text-green-700 font-bold bg-green-50 border border-green-100 p-2.5 rounded-xl mt-2 flex items-center gap-1.5">
+                <span>⚡</span> Server will download, scale if needed (>2560px), convert to WebP, and upload to Supabase Storage.
+              </div>
+            </div>
+          </div>
+
+          <!-- Import Form -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-roseaccent/20 pt-4">
+            <div class="flex flex-col gap-1.5 md:col-span-2">
+              <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Title *</label>
+              <input type="text" id="import-title" required placeholder="Artwork title..." class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all" />
+            </div>
+            <div class="flex flex-col gap-1.5 md:col-span-2">
+              <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Description</label>
+              <input type="text" id="import-description" placeholder="Brief description..." class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Tags</label>
+              <input type="text" id="import-tags" placeholder="chibi, character, cute" class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Sort Order</label>
+              <input type="number" id="import-sort-order" value="0" class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all" />
+            </div>
+            <div class="flex items-center gap-2 md:col-span-2 pt-1">
+              <input type="checkbox" id="import-featured" value="true" class="w-4 h-4 accent-roseaccent rounded" />
+              <label for="import-featured" class="text-sm font-semibold text-gray-700">Feature on homepage</label>
+            </div>
+            <div class="flex justify-end md:col-span-2 pt-2">
+              <button
+                type="button"
+                id="submit-import-btn"
+                class="bg-roseaccent hover:bg-darkpink text-white font-bold text-sm rounded-xl px-6 py-2.5 transition-colors cursor-pointer shadow-sm"
+              >
+                ✨ Import Artwork to Studio Gallery
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Artworks Grid -->
+    {artworks.length === 0 && !fetchError ? (
+      <div class="bg-white/80 backdrop-blur-md shadow-soft border border-white/60 rounded-3xl p-16 text-center text-gray-400">
+        <div class="text-5xl mb-4">🖼️</div>
+        <p class="font-display font-bold text-xl text-gray-600">Your gallery is empty</p>
+        <p class="text-sm mt-2 text-gray-500">Click "Add Artwork" to upload your first piece.</p>
+      </div>
+    ) : (
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+        {artworks.map((art) => (
+          <div class="bg-white/90 backdrop-blur-sm border border-white shadow-soft rounded-2xl overflow-hidden group hover:shadow-md transition-shadow">
+            <div class="relative aspect-square bg-gray-100 overflow-hidden">
+              <img src={art.image_url} alt={art.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+              {art.is_featured && (
+                <div class="absolute top-2.5 left-2.5 bg-yellow-400/90 backdrop-blur-md text-yellow-900 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                  ⭐ Featured
+                </div>
+              )}
+            </div>
+            <div class="p-4 flex flex-col gap-2">
+              <p class="font-bold text-sm text-gray-800 truncate">{art.title}</p>
+              {art.tags && art.tags.length > 0 && (
+                <div class="flex flex-wrap gap-1.5">
+                  {art.tags.slice(0, 2).map((tag: string) => (
+                    <span class="bg-blush text-darkpink text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full">{tag}</span>
+                  ))}
+                </div>
+              )}
+              <!-- Actions -->
+              <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-100">
+                <!-- Toggle featured -->
+                <form method="POST" class="flex-1">
+                  <input type="hidden" name="action" value="toggle_featured" />
+                  <input type="hidden" name="artwork_id" value={art.id} />
+                  <input type="hidden" name="current_featured" value={art.is_featured.toString()} />
+                  <button type="submit" class={`w-full text-xs font-bold py-1.5 rounded-lg border transition-colors cursor-pointer ${art.is_featured ? 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}>
+                    {art.is_featured ? '⭐ Unfeature' : '☆ Feature'}
+                  </button>
+                </form>
+                <!-- Edit -->
+                <button 
+                  type="button" 
+                  class="edit-btn w-full text-xs font-bold py-1.5 rounded-lg border bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 transition-colors cursor-pointer"
+                  data-id={art.id}
+                  data-title={art.title}
+                  data-desc={art.description || ''}
+                  data-tags={(art.tags || []).join(', ')}
+                  data-order={art.display_order}
+                  data-featured={art.is_featured.toString()}
+                  data-img={art.image_url}
+                >
+                  ✎ Edit
+                </button>
+                <!-- Delete -->
+                <form method="POST" onsubmit="return confirm('Delete this artwork? This cannot be undone.')">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="artwork_id" value={art.id} />
+                  <button type="submit" class="text-xs font-bold py-1.5 px-2.5 rounded-lg border bg-red-50 text-red-600 border-red-200 hover:bg-red-100 transition-colors cursor-pointer" title="Delete">
+                    🗑
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    <!-- Edit Artwork Modal -->
+    <div id="edit-artwork-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white/95 backdrop-blur-md rounded-3xl p-7 w-full max-w-lg max-h-[90vh] overflow-y-auto flex flex-col gap-5 shadow-2xl border border-white">
+        <h2 class="text-xl font-display font-bold text-gray-800 border-b border-gray-100 pb-3">Edit Artwork</h2>
+        <form id="edit-artwork-form" method="POST" class="flex flex-col gap-4">
+          <input type="hidden" name="action" value="edit" />
+          <input type="hidden" name="artwork_id" id="edit-id" />
+          <input type="hidden" name="image_url" id="edit-image-url" />
+          
+          <div class="flex items-center justify-center mb-1">
+             <img id="edit-preview-img" src="" class="w-32 h-32 object-cover rounded-2xl border-4 border-white shadow-sm" />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Title *</label>
+            <input type="text" name="title" id="edit-title" required class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all" />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Description</label>
+            <textarea name="description" id="edit-desc" rows="2" class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all resize-none"></textarea>
+          </div>
+          
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Tags (comma-separated)</label>
+            <input type="text" name="tags" id="edit-tags" class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all" />
+          </div>
+          
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Sort Order</label>
+            <input type="number" name="sort_order" id="edit-sort-order" class="border border-gray-200 bg-white/50 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 outline-none focus:border-roseaccent focus:ring-1 focus:ring-roseaccent transition-all" />
+          </div>
+          
+          <div class="flex items-center gap-2 pt-1">
+            <input type="checkbox" name="featured" id="edit-featured" value="true" class="w-4 h-4 accent-roseaccent rounded" />
+            <label class="text-sm font-semibold text-gray-700">Feature on homepage</label>
+          </div>
+          
+          <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
+            <button type="button" id="close-edit-btn" class="border border-gray-200 bg-white rounded-xl px-5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
+              Cancel
+            </button>
+            <button type="submit" class="bg-roseaccent hover:bg-darkpink text-white font-bold text-sm rounded-xl px-6 py-2 transition-colors cursor-pointer shadow-sm">
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  const showBtn = document.getElementById('show-add-form-btn');
+  const form = document.getElementById('add-artwork-form');
+  const cancelBtn = document.getElementById('cancel-add-btn');
+
+  showBtn?.addEventListener('click', () => form?.classList.toggle('hidden'));
+  cancelBtn?.addEventListener('click', () => form?.classList.add('hidden'));
+
+  // Tab switching
+  const tabFileBtn = document.getElementById('tab-file-btn');
+  const tabUrlBtn = document.getElementById('tab-url-btn');
+  const fileForm = document.getElementById('file-add-form');
+  const modeUrl = document.getElementById('mode-url-container');
+
+  tabFileBtn?.addEventListener('click', () => {
+    fileForm?.classList.remove('hidden');
+    fileForm?.classList.add('grid');
+    modeUrl?.classList.add('hidden');
+    modeUrl?.classList.remove('flex');
+    if (tabFileBtn) tabFileBtn.className = 'px-4 py-2 text-xs font-bold rounded-xl bg-blush text-darkpink transition-colors cursor-pointer';
+    if (tabUrlBtn) tabUrlBtn.className = 'px-4 py-2 text-xs font-bold rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer';
+  });
+
+  tabUrlBtn?.addEventListener('click', () => {
+    modeUrl?.classList.remove('hidden');
+    modeUrl?.classList.add('flex');
+    fileForm?.classList.add('hidden');
+    fileForm?.classList.remove('grid');
+    if (tabUrlBtn) tabUrlBtn.className = 'px-4 py-2 text-xs font-bold rounded-xl bg-blush text-darkpink transition-colors cursor-pointer';
+    if (tabFileBtn) tabFileBtn.className = 'px-4 py-2 text-xs font-bold rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer';
+  });
+
+  // Mode 1: File Dropzone Upload Script
+  const hiddenUrlInput = document.getElementById('image-url-hidden') as HTMLInputElement;
+  const fileInput = document.getElementById('artwork-file-input') as HTMLInputElement;
+  const fileStatusDiv = document.getElementById('upload-status');
+  const filePreviewContainer = document.getElementById('file-preview-container');
+  const filePreviewImg = document.getElementById('file-preview-element') as HTMLImageElement;
+  const filePreviewUrlText = document.getElementById('file-preview-url-text');
+
+  fileInput?.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+
+    if (fileStatusDiv) {
+      fileStatusDiv.textContent = '🔄 Converting image to WebP format...';
+      fileStatusDiv.className = 'text-xs text-roseaccent font-semibold animate-pulse pl-1';
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        const maxDim = 2000;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            if (fileStatusDiv) {
+              fileStatusDiv.textContent = '❌ WebP conversion failed';
+              fileStatusDiv.className = 'text-xs text-red-500 font-bold pl-1';
+            }
+            return;
+          }
+
+          if (fileStatusDiv) {
+            fileStatusDiv.textContent = '⚡ WebP converted! Uploading to Supabase Storage...';
+          }
+
+          const webpFile = new File([blob], `${file.name.replace(/\.[^/.]+$/, "")}.webp`, { type: 'image/webp' });
+          const formData = new FormData();
+          formData.append('file', webpFile);
+
+          try {
+            const res = await fetch('/api/upload-artwork', {
+              method: 'POST',
+              body: formData
+            });
+
+            const data = await res.json();
+            if (res.ok && data.url) {
+              if (hiddenUrlInput) hiddenUrlInput.value = data.url;
+              if (filePreviewImg) filePreviewImg.src = data.url;
+              if (filePreviewUrlText) filePreviewUrlText.textContent = data.url;
+              filePreviewContainer?.classList.remove('hidden');
+              filePreviewContainer?.classList.add('flex');
+
+              if (fileStatusDiv) {
+                fileStatusDiv.textContent = `✅ Uploaded & converted to WebP (${(blob.size / 1024).toFixed(1)} KB)`;
+                fileStatusDiv.className = 'text-xs text-green-600 font-bold pl-1';
+              }
+            } else {
+              if (fileStatusDiv) {
+                fileStatusDiv.textContent = `⚠️ Storage upload error: ${data.error || 'Failed'}`;
+                fileStatusDiv.className = 'text-xs text-amber-600 font-semibold pl-1';
+              }
+            }
+          } catch (err: any) {
+            if (fileStatusDiv) {
+              fileStatusDiv.textContent = `❌ Network error: ${err.message}`;
+              fileStatusDiv.className = 'text-xs text-red-500 font-bold pl-1';
+            }
+          }
+        }, 'image/webp', 0.85);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Mode 2: Social Media & Direct Link Resolver Script
+  const socialUrlInput = document.getElementById('social-url-input') as HTMLInputElement;
+  const resolveBtn = document.getElementById('resolve-url-btn');
+  const resolveStatus = document.getElementById('resolve-status');
+
+  const previewCard = document.getElementById('social-preview-card');
+  const previewImg = document.getElementById('social-preview-img') as HTMLImageElement;
+  const badgePlatform = document.getElementById('preview-platform-badge');
+  const metaSource = document.getElementById('meta-source');
+  const metaDimensions = document.getElementById('meta-dimensions');
+  const metaFormat = document.getElementById('meta-format');
+  const metaSize = document.getElementById('meta-size');
+
+  const importTitle = document.getElementById('import-title') as HTMLInputElement;
+  const importDesc = document.getElementById('import-description') as HTMLInputElement;
+  const importTags = document.getElementById('import-tags') as HTMLInputElement;
+  const importSortOrder = document.getElementById('import-sort-order') as HTMLInputElement;
+  const importFeatured = document.getElementById('import-featured') as HTMLInputElement;
+  const submitImportBtn = document.getElementById('submit-import-btn');
+
+  let activeResolvedUrl = '';
+
+  // Step 1: Preview & Resolve
+  resolveBtn?.addEventListener('click', async () => {
+    const rawUrl = socialUrlInput?.value.trim();
+    if (!rawUrl) {
+      if (resolveStatus) {
+        resolveStatus.innerHTML = '⚠️ Please enter a social media post URL or direct image URL.';
+        resolveStatus.className = 'p-3.5 rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 block';
+      }
+      return;
+    }
+
+    if (resolveStatus) {
+      resolveStatus.innerHTML = '🔍 Resolving image & validating URL server-side...';
+      resolveStatus.className = 'p-3.5 rounded-xl text-xs font-semibold bg-blush/60 text-darkpink border border-roseaccent/30 animate-pulse block';
+    }
+    previewCard?.classList.add('hidden');
+    previewCard?.classList.remove('flex');
+
+    try {
+      const res = await fetch('/api/resolve-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: rawUrl })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success && data.image) {
+        activeResolvedUrl = rawUrl;
+        const img = data.image;
+
+        if (previewImg) previewImg.src = img.imageUrl;
+        if (badgePlatform) badgePlatform.textContent = img.sourcePlatform || 'Social URL';
+        if (metaSource) metaSource.textContent = img.sourcePlatform || 'Direct';
+        if (metaDimensions) metaDimensions.textContent = img.width && img.height ? `${img.width} × ${img.height} px` : 'Auto';
+        if (metaFormat) metaFormat.textContent = img.format || 'Unknown';
+        if (metaSize) metaSize.textContent = img.sizeBytes ? `${(img.sizeBytes / 1024 / 1024).toFixed(2)} MB` : 'Unknown';
+
+        if (resolveStatus) {
+          resolveStatus.innerHTML = `✅ Successfully resolved image from <b>${img.sourcePlatform}</b>! Review details below and click import.`;
+          resolveStatus.className = 'p-3.5 rounded-xl text-xs font-semibold bg-green-50 text-green-700 border border-green-200 block shadow-sm';
+        }
+
+        previewCard?.classList.remove('hidden');
+        previewCard?.classList.add('flex');
+
+      } else {
+        const errorMsg = data.error || 'Could not retrieve an image from this URL.';
+        const platform = data.platform || 'URL';
+
+        if (resolveStatus) {
+          resolveStatus.innerHTML = `
+            <div class="flex flex-col gap-1">
+              <span class="font-bold text-red-700">❌ Could not retrieve an image from this URL</span>
+              <span class="text-red-600 font-medium"><b>Reason:</b> ${errorMsg}</span>
+              <span class="text-gray-500 font-normal mt-1 pt-2 border-t border-red-200/50">Please use the <b>📁 Upload File</b> tab to upload your artwork image directly.</span>
+            </div>
+          `;
+          resolveStatus.className = 'p-4 rounded-xl text-xs bg-red-50/80 text-red-700 border border-red-200 block shadow-sm';
+        }
+      }
+    } catch (err: any) {
+      if (resolveStatus) {
+        resolveStatus.innerHTML = `❌ Network error resolving URL: ${err.message}`;
+        resolveStatus.className = 'p-3.5 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200 block shadow-sm';
+      }
+    }
+  });
+
+  // Step 2: Submit Import
+  submitImportBtn?.addEventListener('click', async () => {
+    const title = importTitle?.value.trim();
+    if (!title) {
+      alert('Please enter an artwork title.');
+      importTitle?.focus();
+      return;
+    }
+
+    if (!activeResolvedUrl) {
+      alert('Please preview and resolve a URL first.');
+      return;
+    }
+
+    if (submitImportBtn) {
+      submitImportBtn.textContent = '🔄 Downloading, converting to WebP & saving...';
+      (submitImportBtn as HTMLButtonElement).disabled = true;
+    }
+
+    try {
+      const res = await fetch('/api/import-artwork', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: activeResolvedUrl,
+          title,
+          description: importDesc?.value || '',
+          tags: importTags?.value || '',
+          is_featured: importFeatured?.checked || false,
+          display_order: parseInt(importSortOrder?.value) || 0
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        alert('🎉 Artwork imported successfully!');
+        window.location.reload();
+      } else {
+        alert(`⚠️ Import failed: ${data.error || 'Unknown error'}`);
+        if (submitImportBtn) {
+          submitImportBtn.textContent = '✨ Import Artwork to Studio Gallery';
+          (submitImportBtn as HTMLButtonElement).disabled = false;
+        }
+      }
+    } catch (err: any) {
+      alert(`❌ Import error: ${err.message}`);
+      if (submitImportBtn) {
+        submitImportBtn.textContent = '✨ Import Artwork to Studio Gallery';
+        (submitImportBtn as HTMLButtonElement).disabled = false;
+      }
+    }
+  });
+
+  // Edit Modal Script
+  const editBtns = document.querySelectorAll('.edit-btn');
+  const editModal = document.getElementById('edit-artwork-modal');
+  const closeEditBtn = document.getElementById('close-edit-btn');
+  
+  const editId = document.getElementById('edit-id') as HTMLInputElement;
+  const editTitle = document.getElementById('edit-title') as HTMLInputElement;
+  const editDesc = document.getElementById('edit-desc') as HTMLTextAreaElement;
+  const editTags = document.getElementById('edit-tags') as HTMLInputElement;
+  const editSortOrder = document.getElementById('edit-sort-order') as HTMLInputElement;
+  const editFeatured = document.getElementById('edit-featured') as HTMLInputElement;
+  const editImgUrl = document.getElementById('edit-image-url') as HTMLInputElement;
+  const editPreviewImg = document.getElementById('edit-preview-img') as HTMLImageElement;
+
+  editBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      editId.value = target.dataset.id || '';
+      editTitle.value = target.dataset.title || '';
+      editDesc.value = target.dataset.desc || '';
+      editTags.value = target.dataset.tags || '';
+      editSortOrder.value = target.dataset.order || '0';
+      editFeatured.checked = target.dataset.featured === 'true';
+      editImgUrl.value = target.dataset.img || '';
+      editPreviewImg.src = target.dataset.img || '';
+      
+      editModal?.classList.remove('hidden');
+    });
+  });
+
+  closeEditBtn?.addEventListener('click', () => {
+    editModal?.classList.add('hidden');
+  });
+
+  // Close modal when clicking outside
+  editModal?.addEventListener('click', (e) => {
+    if (e.target === editModal) {
+      editModal.classList.add('hidden');
+    }
+  });
+</script>

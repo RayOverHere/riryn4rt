@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sky-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff0f3" />
+      <stop offset="60%" stop-color="#ffe5ec" />
+      <stop offset="100%" stop-color="#ffccd5" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="400" height="500" rx="20" fill="url(#sky-grad)" />
+  
+  <!-- Clouds -->
+  <path d="M-20 150 C30 150 50 120 80 120 C110 120 120 140 150 140 C180 140 200 110 230 110 C260 110 280 130 310 130 C340 130 370 100 420 100 L420 500 L-20 500 Z" fill="#ffffff" opacity="0.6" />
+  <path d="M-20 220 C40 220 70 180 110 180 C150 180 170 210 210 210 C250 210 280 170 330 170 C380 170 410 200 450 200 L450 500 L-20 500 Z" fill="#ffffff" />
+
+  <!-- Sun/Cookie -->
+  <circle cx="320" cy="80" r="35" fill="#fef08a" opacity="0.8" />
+  <circle cx="320" cy="80" r="30" fill="#fde047" />
+
+  <!-- Main Illustration: Giant Strawberries and Cup -->
+  <!-- Cup base -->
+  <path d="M130 250 L270 250 L250 420 L150 420 Z" fill="#fef2f2" stroke="#704c50" stroke-width="6" stroke-linejoin="round" />
+  <!-- Cup sleeve -->
+  <path d="M125 290 L275 290 L265 360 L135 360 Z" fill="#ffccd5" stroke="#704c50" stroke-width="6" stroke-linejoin="round" />
+  <!-- Strawberry Logo on sleeve -->
+  <path d="M200 310 C190 310 185 320 185 328 C185 338 200 345 200 345 C200 345 215 338 215 328 C215 320 210 310 200 310 Z" fill="#ff85a1" stroke="#704c50" stroke-width="3" />
+  <path d="M197 310 C197 307 203 307 203 310" stroke="#704c50" stroke-width="2" fill="none" />
+
+  <!-- Straw -->
+  <rect x="220" y="160" width="20" height="150" rx="5" transform="rotate(15 220 160)" fill="#a7f3d0" stroke="#704c50" stroke-width="6" />
+
+  <!-- Cream on top -->
+  <path d="M115 250 C115 220 150 210 170 220 C180 200 220 200 230 215 C250 205 285 220 285 250 Z" fill="#ffffff" stroke="#704c50" stroke-width="6" stroke-linejoin="round" />
+
+  <!-- Big Strawberry sitting in cream -->
+  <g transform="translate(145, 175) scale(0.7)">
+    <path d="M50 10 C20 10 10 40 10 60 C10 90 50 110 50 110 C50 110 90 90 90 60 C90 40 80 10 50 10 Z" fill="#ff85a1" stroke="#704c50" stroke-width="8" />
+    <path d="M40 12 C40 5 60 5 60 12" stroke="#704c50" stroke-width="6" fill="none" />
+    <path d="M35 15 C35 8 50 8 50 15 M50 15 C50 8 65 8 65 15" fill="#a7f3d0" stroke="#704c50" stroke-width="5" />
+    <!-- Seeds -->
+    <circle cx="35" cy="45" r="3" fill="#ffffff" />
+    <circle cx="65" cy="45" r="3" fill="#ffffff" />
+    <circle cx="50" cy="70" r="3" fill="#ffffff" />
+    <circle cx="30" cy="75" r="3" fill="#ffffff" />
+    <circle cx="70" cy="75" r="3" fill="#ffffff" />
+  </g>
+
+  <!-- Sparkles -->
+  <path d="M80 80 L85 90 L95 95 L85 100 L80 110 L75 100 L65 95 L75 90 Z" fill="#fff" />
+  <path d="M300 200 L303 205 L308 208 L303 211 L300 216 L297 211 L292 208 L297 205 Z" fill="#fff" />
+  <path d="M90 380 L92 383 L97 385 L92 387 L90 392 L88 387 L83 385 L88 383 Z" fill="#fff" />
+
+  <!-- Cozy Title Tag -->
+  <rect x="130" y="450" width="140" height="30" rx="15" fill="#704c50" />
+  <text x="200" y="470" fill="#fffaf0" font-family="'Fredoka', sans-serif" font-size="14" font-weight="bold" text-anchor="middle">Strawberry Dream</text>
+</svg>

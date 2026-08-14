@@ -1,0 +1,174 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getSupabaseAdmin } from '../../lib/supabase';
+import { getArtistProfile } from '../../lib/db';
+
+const sessionCookie = Astro.cookies.get('sb-session');
+if (!sessionCookie?.value) {
+  return Astro.redirect('/admin/login');
+}
+
+const profile = await getArtistProfile();
+
+// Fetch some stats
+let stats = {
+  totalArtworks: 0,
+  pendingCommissions: 0,
+  totalCommissions: 0,
+  recentRequests: [] as any[]
+};
+
+try {
+  const admin = getSupabaseAdmin();
+  
+  const [artworkCount, allRequests] = await Promise.all([
+    admin.from('artworks').select('id', { count: 'exact', head: true }),
+    admin.from('commission_requests').select('id, client_name, status, quoted_price, currency, created_at').order('created_at', { ascending: false }).limit(5)
+  ]);
+  
+  stats.totalArtworks = artworkCount.count || 0;
+  
+  if (allRequests.data) {
+    stats.recentRequests = allRequests.data;
+    stats.totalCommissions = allRequests.data.length;
+    stats.pendingCommissions = allRequests.data.filter((r: any) => r.status === 'new' || r.status === 'reviewing').length;
+  }
+} catch (e) {
+  // Stats will remain at zero if DB not connected
+}
+
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+const statusColors: Record<string, string> = {
+  new: 'bg-blue-100 text-blue-700 border-blue-200',
+  reviewing: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  accepted: 'bg-green-100 text-green-700 border-green-200',
+  in_progress: 'bg-purple-100 text-purple-700 border-purple-200',
+  completed: 'bg-candy/50 text-darkpink-deep border-babypink',
+  rejected: 'bg-red-100 text-red-700 border-red-200',
+  cancelled: 'bg-stone-100 text-stone-700 border-stone-200'
+};
+---
+
+<AdminLayout title="Overview | Admin Dashboard">
+  <div class="p-6 md:p-8 flex flex-col gap-8 max-w-5xl">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-surface p-6 rounded-3xl border-2 border-babypink">
+      <div>
+        <h1 class="text-3xl font-display font-bold text-darkpink-deep">Studio Overview</h1>
+        <p class="text-darkpink-muted font-semibold text-sm mt-1">Welcome back, Riryn! Here's what's happening in your studio.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class={`px-4 py-1.5 rounded-full text-xs font-bold border ${profile.commission_availability ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-stone-100 text-stone-600 border-stone-200'}`}>
+          {profile.commission_availability ? '🟢 Commissions Open' : '🔴 Commissions Closed'}
+        </span>
+        <a href="/admin/profile" class="text-xs text-roseaccent font-bold hover:underline">Change →</a>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+      <div class="glass-surface border-2 border-babypink rounded-3xl p-6 flex flex-col gap-2 hover:-translate-y-1 transition-transform">
+        <span class="text-4xl">🖼️</span>
+        <span class="text-3xl font-display font-bold text-darkpink-deep">{stats.totalArtworks}</span>
+        <span class="text-xs text-darkpink-muted font-bold uppercase tracking-wider">Total Artworks</span>
+      </div>
+      <div class="glass-surface border-2 border-babypink rounded-3xl p-6 flex flex-col gap-2 hover:-translate-y-1 transition-transform">
+        <span class="text-4xl">💌</span>
+        <span class="text-3xl font-display font-bold text-roseaccent">{stats.pendingCommissions}</span>
+        <span class="text-xs text-darkpink-muted font-bold uppercase tracking-wider">Pending Requests</span>
+      </div>
+      <div class="glass-surface border-2 border-babypink rounded-3xl p-6 flex flex-col gap-2 hover:-translate-y-1 transition-transform">
+        <span class="text-4xl">📊</span>
+        <span class="text-3xl font-display font-bold text-darkpink-deep">{stats.totalCommissions}</span>
+        <span class="text-xs text-darkpink-muted font-bold uppercase tracking-wider">Recent Requests</span>
+      </div>
+      <div class="glass-surface border-2 border-babypink rounded-3xl p-6 flex flex-col gap-2 hover:-translate-y-1 transition-transform">
+        <span class="text-4xl">{profile.commission_availability ? '✅' : '⏸️'}</span>
+        <span class="text-xl font-display font-bold text-darkpink-deep">{profile.commission_availability ? 'Open' : 'Closed'}</span>
+        <span class="text-xs text-darkpink-muted font-bold uppercase tracking-wider mt-1">Status</span>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div>
+      <h2 class="text-xs font-bold text-darkpink-muted uppercase tracking-wider mb-4 ml-2">Quick Actions</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a href="/admin/portfolio" class="bg-white/60 hover:bg-candy/40 border-2 border-babypink rounded-2xl p-5 text-center text-sm font-bold text-darkpink-deep transition-all hover:scale-105">
+          <div class="text-2xl mb-1">🖼️</div> Add Artwork
+        </a>
+        <a href="/admin/commissions" class="bg-white/60 hover:bg-candy/40 border-2 border-babypink rounded-2xl p-5 text-center text-sm font-bold text-darkpink-deep transition-all hover:scale-105">
+          <div class="text-2xl mb-1">💌</div> View Requests
+        </a>
+        <a href="/admin/pricing" class="bg-white/60 hover:bg-candy/40 border-2 border-babypink rounded-2xl p-5 text-center text-sm font-bold text-darkpink-deep transition-all hover:scale-105">
+          <div class="text-2xl mb-1">💰</div> Edit Pricing
+        </a>
+        <a href="/admin/profile" class="bg-white/60 hover:bg-candy/40 border-2 border-babypink rounded-2xl p-5 text-center text-sm font-bold text-darkpink-deep transition-all hover:scale-105">
+          <div class="text-2xl mb-1">👤</div> Edit Profile
+        </a>
+      </div>
+    </div>
+
+    <!-- Recent Commission Requests -->
+    <div class="glass-surface border-2 border-babypink rounded-3xl p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-sm font-bold text-darkpink-deep font-display text-xl">Recent Commission Requests</h2>
+        <a href="/admin/commissions" class="text-xs text-roseaccent font-bold hover:underline bg-candy/30 px-3 py-1.5 rounded-full">View all →</a>
+      </div>
+      <div class="overflow-hidden">
+        {stats.recentRequests.length === 0 ? (
+          <div class="p-8 text-center text-darkpink-muted font-semibold bg-white/50 rounded-2xl border border-dashed border-babypink">
+            No commission requests yet. They will appear here once clients submit requests.
+          </div>
+        ) : (
+          <table class="w-full text-sm text-left">
+            <thead>
+              <tr class="text-xs font-bold text-darkpink-muted uppercase tracking-wider border-b-2 border-candy">
+                <th class="px-4 py-3 pb-4">Client</th>
+                <th class="px-4 py-3 pb-4 hidden sm:table-cell">Date</th>
+                <th class="px-4 py-3 pb-4">Status</th>
+                <th class="px-4 py-3 pb-4 text-right">Quote</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y-2 divide-candy/50 font-semibold">
+              {stats.recentRequests.map((req: any) => (
+                <tr class="hover:bg-candy/20 transition-colors">
+                  <td class="px-4 py-4">
+                    <a href={`/admin/commissions/${req.id}`} class="text-darkpink-deep hover:text-roseaccent transition-colors">
+                      {req.client_name}
+                    </a>
+                  </td>
+                  <td class="px-4 py-4 text-darkpink-muted hidden sm:table-cell">{formatDate(req.created_at)}</td>
+                  <td class="px-4 py-4">
+                    <span class={`px-2.5 py-1 rounded-full text-xs font-bold capitalize border ${statusColors[req.status] || 'bg-stone-100 text-stone-600 border-stone-200'}`}>
+                      {req.status.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td class="px-4 py-4 text-right text-darkpink-deep">
+                    {req.currency === 'IDR' ? `Rp${Number(req.quoted_price).toLocaleString()}` : `$${req.quoted_price} ${req.currency}`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+
+    <!-- Artist Profile Quick View -->
+    <div class="glass-surface border-2 border-babypink rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+      <img
+        src={profile.profile_image_url || '/images/mochi-profile.svg'}
+        alt={profile.display_name}
+        class="w-16 h-16 rounded-full border-4 border-candy object-cover shadow-sm"
+      />
+      <div class="flex-grow">
+        <h3 class="font-bold font-display text-xl text-darkpink-deep">{profile.display_name}</h3>
+        <p class="text-sm font-semibold text-darkpink-muted">{profile.location}</p>
+      </div>
+      <a href="/admin/profile" class="cute-btn text-sm py-2 px-5 mt-2 sm:mt-0">
+        Edit Profile ✨
+      </a>
+    </div>
+  </div>
+</AdminLayout>

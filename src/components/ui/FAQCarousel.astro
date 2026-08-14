@@ -1,0 +1,73 @@
+---
+import type { FAQ } from '../../lib/db';
+
+interface Props {
+  faqs: FAQ[];
+}
+
+const { faqs } = Astro.props;
+---
+
+<div class="relative group faq-carousel-wrapper">
+  <!-- Desktop Navigation -->
+  <button class="carousel-prev absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-6 w-12 h-12 bg-white rounded-full border-2 border-babypink shadow-[0_4px_0_var(--color-candy)] z-10 flex items-center justify-center text-roseaccent hover:translate-y-[-calc(50%+2px)] hover:shadow-[0_6px_0_var(--color-babypink)] transition-all hidden md:flex text-xl font-bold cursor-pointer">
+    ←
+  </button>
+  
+  <!-- Scroll Container -->
+  <div class="carousel-scroll flex gap-6 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4 px-4 -mx-4">
+    {faqs.map((faq) => (
+      <div class="snap-center shrink-0 w-[85vw] md:w-[600px] cute-card p-6 md:p-8 bg-white flex flex-col gap-4 border-2 border-babypink h-full">
+        <h3 class="text-xl md:text-2xl font-display font-bold text-darkpink-deep flex items-start gap-3">
+          <span class="text-3xl shrink-0 mt-[-4px]">❓</span>
+          <span>{faq.question}</span>
+        </h3>
+        <p class="text-darkpink font-medium leading-relaxed md:text-lg pl-10 md:pl-11">
+          {faq.answer}
+        </p>
+      </div>
+    ))}
+  </div>
+
+  <button class="carousel-next absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-6 w-12 h-12 bg-white rounded-full border-2 border-babypink shadow-[0_4px_0_var(--color-candy)] z-10 flex items-center justify-center text-roseaccent hover:translate-y-[-calc(50%+2px)] hover:shadow-[0_6px_0_var(--color-babypink)] transition-all hidden md:flex text-xl font-bold cursor-pointer">
+    →
+  </button>
+</div>
+
+<style>
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>
+
+<script>
+  function setupFAQCarousels() {
+    const wrappers = document.querySelectorAll('.faq-carousel-wrapper');
+    
+    wrappers.forEach(wrapper => {
+      const scroll = wrapper.querySelector('.carousel-scroll') as HTMLElement;
+      const prev = wrapper.querySelector('.carousel-prev') as HTMLButtonElement;
+      const next = wrapper.querySelector('.carousel-next') as HTMLButtonElement;
+      
+      if (!scroll || !prev || !next) return;
+
+      const scrollAmount = 600; // rough width of a card on desktop
+
+      prev.addEventListener('click', () => {
+        scroll.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      });
+
+      next.addEventListener('click', () => {
+        scroll.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      });
+    });
+  }
+
+  // Setup on initial load and view transitions
+  setupFAQCarousels();
+  document.addEventListener('astro:page-load', setupFAQCarousels);
+</script>

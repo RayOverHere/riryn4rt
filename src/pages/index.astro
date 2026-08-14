@@ -1,0 +1,210 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { 
+  getArtistProfile, 
+  getFeaturedArtworks, 
+  getSocialLinks, 
+  getFAQs, 
+  getTestimonials 
+} from '../lib/db';
+import FeaturedCarousel from '../components/ui/FeaturedCarousel.astro';
+import TestimonialCarousel from '../components/ui/TestimonialCarousel.astro';
+import FAQCarousel from '../components/ui/FAQCarousel.astro';
+
+const profile = await getArtistProfile();
+const featuredArtworks = await getFeaturedArtworks();
+const socials = await getSocialLinks();
+const faqs = await getFAQs();
+const testimonials = await getTestimonials();
+
+const isAvailable = profile.commission_availability;
+
+// Platform to icon helper
+const getIcon = (platform: string) => {
+  switch (platform.toLowerCase()) {
+    case 'instagram': return '📸';
+    case 'twitter': return '🐦';
+    case 'bluesky': return '🦋';
+    case 'tiktok': return '🎵';
+    default: return '🔗';
+  }
+};
+---
+
+<BaseLayout>
+  <!-- Hero Section -->
+  <section class="max-w-6xl mx-auto px-4 py-12 md:py-24 relative overflow-hidden">
+    <!-- Floating pastel decor -->
+    <div class="absolute top-10 right-10 text-4xl animate-bounce duration-1000 select-none">✨</div>
+    <div class="absolute bottom-10 left-10 text-3xl animate-pulse select-none">🌸</div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+      <!-- Left column: Welcome card -->
+      <div class="md:col-span-7 flex flex-col items-start gap-6 relative z-10">
+        <!-- Commission Availability Badge -->
+        <div class={`inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 text-sm font-bold font-display ${
+          isAvailable 
+            ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-[0_3px_0_rgba(244,63,94,0.15)]' 
+            : 'bg-stone-50 border-stone-200 text-stone-500'
+        }`}>
+          <span class={`w-3 h-3 rounded-full ${isAvailable ? 'bg-rose-500 animate-pulse' : 'bg-stone-400'}`}></span>
+          🎨 {isAvailable ? 'Commissions are currently Open!' : 'Commissions are closed for now'}
+        </div>
+
+        <h1 class="text-4xl sm:text-6xl font-display font-bold text-darkpink-deep leading-tight">
+          Welcome to my <br />
+          <span class="text-roseaccent relative">
+            digital studio
+            <span class="absolute left-0 bottom-1 w-full h-3 bg-candy -z-10 rounded-full"></span>
+          </span>!
+        </h1>
+
+        <p class="text-lg sm:text-xl font-medium text-darkpink-muted max-w-lg leading-relaxed">
+          {profile.short_intro}
+        </p>
+
+        <!-- CTA Buttons -->
+        <div class="flex flex-wrap items-center gap-4 mt-2">
+          {isAvailable && (
+            <a href="/commissions" class="cute-btn text-lg">
+              Order a Commission ✨
+            </a>
+          )}
+          <a href="/gallery" class="cute-btn-secondary text-lg">
+            Browse Gallery 🌸
+          </a>
+        </div>
+      </div>
+
+      <!-- Right column: Overlapping featured images -->
+      <div class="md:col-span-5 relative h-[360px] md:h-[450px] flex items-center justify-center mt-12 md:mt-0">
+        <div class="absolute w-[220px] sm:w-[260px] aspect-[4/5] bg-white border-4 border-babypink rounded-3xl p-3 rotate-[-8deg] translate-x-[-40px] translate-y-[-20px] shadow-lg overflow-hidden transition-transform hover:rotate-[-4deg] hover:z-20 duration-300">
+          <img 
+            src={featuredArtworks[0]?.image_url || '/images/gallery/strawberry-dream.svg'} 
+            alt={featuredArtworks[0]?.title || 'Artwork'} 
+            class="w-full h-full object-cover rounded-2xl"
+          />
+        </div>
+        <div class="absolute w-[220px] sm:w-[260px] aspect-[4/5] bg-white border-4 border-babypink rounded-3xl p-3 rotate-[6deg] translate-x-[40px] translate-y-[20px] shadow-xl overflow-hidden transition-transform hover:rotate-[2deg] hover:z-20 duration-300">
+          <img 
+            src={featuredArtworks[1]?.image_url || '/images/gallery/rainy-afternoon.svg'} 
+            alt={featuredArtworks[1]?.title || 'Artwork'} 
+            class="w-full h-full object-cover rounded-2xl"
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Works Grid Section (Asymmetrical Exhibit) -->
+  <section class="max-w-6xl mx-auto px-4 py-16">
+    <div class="flex flex-col items-center text-center mb-12 gap-2">
+      <h2 class="text-3xl sm:text-5xl font-display text-darkpink-deep">Featured Illustrations</h2>
+      <p class="text-darkpink-muted max-w-md font-medium">A few pieces of mine made with cozy vibes and detailed shading.</p>
+    </div>
+
+    <!-- Carousel -->
+    <div class="mt-8">
+      <FeaturedCarousel artworks={featuredArtworks} />
+    </div>
+
+    <div class="flex justify-center mt-16">
+      <a href="/gallery" class="cute-btn-secondary text-lg">
+        View Entire Exhibition 🖼️
+      </a>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section id="about" class="max-w-6xl mx-auto px-4 py-16 md:py-24">
+    <div class="bg-blush border-3 border-babypink rounded-3xl p-8 md:p-12 shadow-[0_8px_0_var(--color-candy)]">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+        <!-- Profile Image -->
+        <div class="md:col-span-4 flex justify-center">
+          <div class="w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] rounded-full border-4 border-babypink overflow-hidden bg-white p-2 shadow-md">
+            <img 
+              src={profile.profile_image_url || '/images/mochi-profile.svg'} 
+              alt={profile.display_name} 
+              class="w-full h-full object-cover rounded-full"
+            />
+          </div>
+        </div>
+
+        <!-- Biography -->
+        <div class="md:col-span-8 flex flex-col items-start gap-4">
+          <h2 class="text-3xl sm:text-4xl font-display text-darkpink-deep">Hi there, I am {profile.name}!</h2>
+          
+          <!-- Location Badge -->
+          <div class="inline-flex items-center gap-1.5 text-sm font-bold text-darkpink-muted/90 bg-white border border-babypink rounded-full px-3 py-1">
+            📍 Based in {profile.location}
+          </div>
+
+          <p class="text-base sm:text-lg leading-relaxed text-darkpink font-medium whitespace-pre-line">
+            {profile.full_bio}
+          </p>
+
+          <!-- Socials -->
+          <div class="flex items-center gap-3 mt-4">
+            <span class="font-display font-bold text-sm text-darkpink-muted uppercase tracking-wider mr-2">Find me:</span>
+            {socials.map((link) => (
+              <a 
+                href={link.url} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                class="px-4 py-2 bg-white border-2 border-babypink rounded-full font-display font-bold text-sm text-darkpink shadow-[0_3px_0_var(--color-candy)] hover:translate-y-[-2px] hover:shadow-[0_5px_0_var(--color-babypink)] hover:border-roseaccent transition-all flex items-center gap-1.5"
+              >
+                <span>{getIcon(link.platform)}</span>
+                <span class="capitalize">{link.platform}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials Section -->
+  <section class="max-w-6xl mx-auto px-4 py-16 bg-cream">
+    <div class="flex flex-col items-center text-center mb-12 gap-2">
+      <h2 class="text-3xl sm:text-5xl font-display text-darkpink-deep">Client Love Letters</h2>
+      <p class="text-darkpink-muted max-w-md font-medium">Sweet feedback from wonderful clients I have collaborated with.</p>
+    </div>
+
+    <!-- Review Carousel -->
+    <div class="mt-8">
+      <TestimonialCarousel testimonials={testimonials} />
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section id="faq" class="max-w-4xl mx-auto px-4 py-16">
+    <div class="flex flex-col items-center text-center mb-12 gap-2">
+      <h2 class="text-3xl sm:text-5xl font-display text-darkpink-deep">Frequently Asked Questions</h2>
+      <p class="text-darkpink-muted max-w-md font-medium">Have questions? Here are quick answers to the most common inquiries.</p>
+    </div>
+
+    <div class="mt-8">
+      <FAQCarousel faqs={faqs} />
+    </div>
+  </section>
+
+  <!-- Final CTA Banner -->
+  <section class="max-w-6xl mx-auto px-4 py-16 text-center">
+    <div class="bg-roseaccent/15 border-3 border-dashed border-roseaccent rounded-3xl p-8 md:p-16 flex flex-col items-center gap-6">
+      <div class="text-5xl animate-bounce">💌</div>
+      <h2 class="text-3xl sm:text-5xl font-display text-darkpink-deep">Let's create something magical!</h2>
+      <p class="text-darkpink-muted max-w-md font-medium text-lg">
+        Whether it is a profile icon, an original character illustration, or a full cozy background scene, I would love to help you bring it to life!
+      </p>
+      {isAvailable ? (
+        <a href="/commissions" class="cute-btn text-lg py-3 px-8">
+          Order a Commission Now ✨
+        </a>
+      ) : (
+        <button disabled class="cute-btn bg-stone-300 border-stone-400 text-stone-500 shadow-none cursor-not-allowed">
+          Commissions are closed
+        </button>
+      )}
+    </div>
+  </section>
+</BaseLayout>

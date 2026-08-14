@@ -1,0 +1,88 @@
+---
+import type { Artwork } from '../../lib/db';
+
+interface Props {
+  artworks: Artwork[];
+}
+
+const { artworks } = Astro.props;
+---
+
+<div class="relative group featured-carousel-wrapper">
+  <!-- Desktop Navigation -->
+  <button class="carousel-prev absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-6 w-12 h-12 bg-white rounded-full border-2 border-babypink shadow-[0_4px_0_var(--color-candy)] z-10 flex items-center justify-center text-roseaccent hover:translate-y-[-calc(50%+2px)] hover:shadow-[0_6px_0_var(--color-babypink)] transition-all hidden md:flex text-xl font-bold cursor-pointer">
+    ←
+  </button>
+  
+  <!-- Scroll Container -->
+  <div class="carousel-scroll flex gap-6 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4 px-4 -mx-4">
+    {artworks.map((art) => (
+      <div class="snap-center shrink-0 w-[85vw] sm:w-[60vw] md:w-[400px] cute-card p-4 bg-white flex flex-col gap-4">
+        <!-- Natural Aspect Ratio Image Container -->
+        <div class="w-full rounded-2xl overflow-hidden bg-cream border-2 border-candy relative group">
+          <img 
+            src={art.image_url} 
+            alt={art.title} 
+            class="w-full h-auto object-contain max-h-[400px] mx-auto group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+          />
+          {art.tags && art.tags.length > 0 && (
+            <div class="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
+              {art.tags.slice(0, 2).map(tag => (
+                <span class="text-xs font-bold font-display px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded-full text-darkpink border border-babypink shadow-sm">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div class="flex flex-col gap-1 px-1">
+          <h3 class="text-xl font-display font-bold text-darkpink-deep">{art.title}</h3>
+          <p class="text-sm font-semibold text-darkpink-muted line-clamp-2">{art.description}</p>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <button class="carousel-next absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-6 w-12 h-12 bg-white rounded-full border-2 border-babypink shadow-[0_4px_0_var(--color-candy)] z-10 flex items-center justify-center text-roseaccent hover:translate-y-[-calc(50%+2px)] hover:shadow-[0_6px_0_var(--color-babypink)] transition-all hidden md:flex text-xl font-bold cursor-pointer">
+    →
+  </button>
+</div>
+
+<style>
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>
+
+<script>
+  function setupCarousels() {
+    const wrappers = document.querySelectorAll('.featured-carousel-wrapper');
+    
+    wrappers.forEach(wrapper => {
+      const scroll = wrapper.querySelector('.carousel-scroll') as HTMLElement;
+      const prev = wrapper.querySelector('.carousel-prev') as HTMLButtonElement;
+      const next = wrapper.querySelector('.carousel-next') as HTMLButtonElement;
+      
+      if (!scroll || !prev || !next) return;
+
+      const scrollAmount = 400; // rough width of a card
+
+      prev.addEventListener('click', () => {
+        scroll.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      });
+
+      next.addEventListener('click', () => {
+        scroll.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      });
+    });
+  }
+
+  // Setup on initial load and view transitions
+  setupCarousels();
+  document.addEventListener('astro:page-load', setupCarousels);
+</script>
